@@ -23,15 +23,13 @@
       <div class="header-inner">
         <button class="menu-toggle" id="menuToggle" aria-label="Меню">☰</button>
         <a class="logo" href="{{ url_for('index') }}">🍺 <span>Пивная энциклопедия</span></a>
-        <button class="theme-toggle" id="themeToggle" aria-label="Тема">🌙</button>
         <nav class="main-nav" id="mainNav">
-          <a href="{{ url_for('index') }}">Главная</a>
-          <a href="{{ url_for('catalog') }}">Каталог</a>
-          <a href="{{ url_for('style_families') }}">Стили</a>
-          <a href="{{ url_for('breweries') }}">Пивовары</a>
-          <a href="{{ url_for('top') }}">Подборки</a>
-          <a href="{{ url_for('favorites') }}">♥ <span class="fav-header-count" id="favHeaderCount" style="display:none">0</span></a>
-          <a href="{{ url_for('status') }}">📡 Статус</a>
+          {% set path = request.path %}
+          <a href="{{ url_for('index') }}" class="{{ 'active' if path == '/' or path.startswith('/catalog') else '' }}">Каталог</a>
+          <a href="{{ url_for('style_families') }}" class="{{ 'active' if path.startswith('/style') else '' }}">Стили</a>
+          <a href="{{ url_for('breweries') }}" class="{{ 'active' if path.startswith('/brewery') else '' }}">Пивовары</a>
+          <a href="{{ url_for('top') }}" class="{{ 'active' if path.startswith('/top') else '' }}">Подборки</a>
+          <a href="{{ url_for('favorites') }}" class="{{ 'active' if path.startswith('/favorites') else '' }}">♥ <span class="fav-header-count" id="favHeaderCount" style="display:none">0</span></a>
           <a href="{{ url_for('random_beer') }}">🎲 Случайное</a>
         </nav>
         <form class="search-form" action="{{ url_for('search') }}" method="get" autocomplete="off">
@@ -39,6 +37,7 @@
           <div id="suggestBox" class="suggest-box" hidden></div>
           <button type="submit">Поиск</button>
         </form>
+        <button class="theme-toggle theme-toggle--mini" id="themeToggle" aria-label="Сменить тему">🌙</button>
       </div>
     </header>
 
@@ -59,7 +58,7 @@
     <footer class="site-footer">
       <div class="footer-inner">
         <span>Данные: <a href="https://craftbeer78.ru" target="_blank" rel="noopener">craftbeer78.ru</a> • Стили: BJCP 2021</span>
-        <span>Админ-просмотр БД: <a href="/table/products_full">/table/products_full</a></span>
+        <span class="footer-tagline">Пивная энциклопедия — справочник крафтового пива</span>
       </div>
     </footer>
 

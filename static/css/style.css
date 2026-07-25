@@ -87,6 +87,10 @@ a:hover { text-decoration: underline; }
   color: var(--text);
   text-decoration: none;
 }
+.main-nav a.active {
+  background: var(--panel);
+  color: var(--accent);
+}
 
 .search-form {
   margin-left: auto;
@@ -492,6 +496,7 @@ a:hover { text-decoration: underline; }
   display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
   color: var(--muted); font-size: 12px;
 }
+.footer-tagline { opacity: 0.8; }
 
 /* ===== MISC ===== */
 .text-muted { color: var(--muted); }
@@ -1151,6 +1156,22 @@ a:hover { text-decoration: underline; }
 }
 .theme-toggle:hover { border-color: var(--accent); }
 
+/* Компактная кнопка темы в правом краю шапки — не должна бросаться в глаза */
+.theme-toggle--mini {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font-size: 15px;
+  flex-shrink: 0;
+}
+.theme-toggle--mini:hover {
+  border-color: var(--border);
+  background: var(--panel);
+  color: var(--text);
+}
+
 /* ===== МОБИЛЬНАЯ АДАПТИВНОСТЬ ===== */
 @media (max-width: 768px) {
   .header-inner {
@@ -1188,7 +1209,7 @@ a:hover { text-decoration: underline; }
     margin-left: 0;
     min-width: 0;
   }
-  .theme-toggle { order: 0; }
+  .theme-toggle--mini { order: 1; }
 
   .container { padding: 16px 12px 40px; }
   .hero { padding: 24px 18px; }
