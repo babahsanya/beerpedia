@@ -1,6 +1,6 @@
 # 🍺 Пивная энциклопедия
 
-Веб-энциклопедия крафтового пива, сидра и медовухи. ~7733 позиций, ~231 стиль, ~277 пивоварен, 19 стран. Данные парсятся с [craftbeer78.ru](https://craftbeer78.ru), стиль — Flask + SQLite, тёмная тема.
+Веб-энциклопедия крафтового пива, сидра и медовухи. ~7733 позиций, 842 стиля в 16 семьях, 278 пивоварен, 19 стран. Данные парсятся с [craftbeer78.ru](https://craftbeer78.ru), стиль — Flask + SQLite, тёмная/светлая тема.
 
 ## 📦 Состав проекта
 
@@ -9,7 +9,13 @@
 | `app.py` | **Главный Flask-сервер** (энциклопедия) → http://127.0.0.1:8000 |
 | `craftbeer_global_parser.py` | Парсер craftbeer78.ru, наполняет базу |
 | `image_cache.py` | Скачивает фото бутылок в `static/images/` |
+| `fetch_brewery_logos.py` | Скачивает логотипы пивоварен в `static/breweries/` |
+| `fetch_tastes.py` | Обходит каталог вкусов /beer-tastes (132 тега) |
 | `style_guide.py` | Справочник стилей BJCP (31 стиль) в таблицу `beer_styles` |
+| `style_families.py` | Классификатор 16 семей стилей |
+| `canonicalize_styles.py` | Канонизация 842 стилей → 48 категорий |
+| `normalize_styles.py` | Заполняет style_family по keyword-правилам |
+| `search_engine.py` | Интеллектуальный поиск (опечатки, раскладка, ru↔en) |
 | `run_full_pipeline.py` | Конвейер: парсер → картинки → стили (одной командой) |
 | `db_viewer.py` | Админ-просмотрщик таблиц (старый, не трогали) |
 | `beer_database.db` | SQLite — основная база |
@@ -128,3 +134,107 @@ python style_guide.py --stats         # сводка по стилям
 - `name`, `style`, `abv`, `ibu`, `description`, `ingredients`, `og_value`, `barcode`, `price`, `availability`, `image_url` — **~100%**
 - `color` — ~44% (сайт отдаёт не всегда)
 - `aroma`, `taste` — низко (сайт отдаёт редко)
+
+## 🚀 Развёртывание на VPS (Docker)
+
+### Быстрый старт
+
+```bash
+# 1. Клонируем репо на VPS
+git clone https://github.com/babahsanya/pars-craftbeer.git
+cd pars-craftbeer
+
+# 2. (Опционально) Настраиваем домен
+cp .env.example .env
+nano .env  # указать DOMAIN=beer.example.com
+
+# 3. Запуск! Docker сам соберёт образ и запустит
+docker compose up -d
+
+# 4. Проверяем
+curl http://localhost
+docker compose logs -f app
+```
+
+### Что произойдёт при первом запуске
+
+1. **Docker соберёт образ** (Python 3.12 + зависимости + код)
+2. **entrypoint.sh проверит БД**: если `beer_database.db` нет → запустит полный
+   конвейер (`run_full_pipeline.py --fresh`) — парсинг 7733 позиций + картинки.
+   Это займёт ~1-2 часа при первом запуске.
+3. **Gunicorn** поднимет production-сервер на порту 8000
+4. **Nginx** (отдельный контейнер) будет проксировать запросы на порту 80
+
+### Если БД уже есть (миграция с локального)
+
+Если у тебя уже есть готовая `beer_database.db` с данными — скопируй её в volume:
+
+```bash
+# После первого docker compose up -d (создаст volumes)
+docker compose down
+
+# Копируем локальную базу в volume
+docker run --rm -v $(pwd)/beer_database.db:/source -v pars-craftbeer_beer_data:/dest \
+    alpine cp /source /dest/beer_database.db
+
+# Копируем картинки (если есть локально)
+docker run --rm -v $(pwd)/static/images:/source -v pars-craftbeer_beer_static_images:/dest \
+    alpine sh -c "cp -r /source/* /dest/"
+
+# Запускаем снова — теперь с готовой базой
+docker compose up -d
+```
+
+### Полезные команды
+
+```bash
+# Обновить данные (парсер + картинки + стили)
+docker compose exec app python run_full_pipeline.py
+
+# Только перепроверить ошибки
+docker compose exec app python craftbeer_global_parser.py --refresh --failed-only
+
+# Посмотреть логи
+docker compose logs -f app      # Flask/Gunicorn
+docker compose logs -f nginx    # Nginx
+
+# Обновить код из git и пересобрать
+git pull && docker compose up -d --build
+
+# Остановить
+docker compose down
+
+# Полный сброс (УДАЛИТ базу и картинки!)
+docker compose down -v
+```
+
+### HTTPS (Let's Encrypt)
+
+```bash
+# Установить certbot на VPS
+sudo apt install certbot python3-certbot-nginx
+
+# Получить SSL-сертификат (домен должен указывать на IP VPS)
+sudo certbot --nginx -d beer.example.com
+
+# Автообновление сертификатов (уже настроено certbot'ом)
+sudo certbot renew --dry-run
+```
+
+### Структура Docker-деплоя
+
+```
+VPS
+├── pars-craftbeer/          # код + Dockerfile
+│   ├── Dockerfile
+│   ├── docker-compose.yml
+│   ├── nginx.conf
+│   └── entrypoint.sh
+├── Docker volumes (персистентные):
+│   ├── beer_data/           # beer_database.db (~45 МБ)
+│   ├── beer_static_images/  # фото пива (~450 МБ)
+│   └── beer_static_breweries/ # логотипы (~3 МБ)
+└── Контейнеры:
+    ├── beer_app             # Flask + Gunicorn (порт 8000)
+    └── beer_nginx           # Nginx reverse proxy (порт 80)
+```

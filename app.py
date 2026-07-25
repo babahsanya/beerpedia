@@ -236,8 +236,63 @@ def api_suggest():
         return []
     db = get_db()
     res = search_engine.search(q, db, limit=MAX_SUGGEST)
+    results = res["results"]
+
+    # Опциональная пост-фильтрация подсказок по активным фильтрам каталога,
+    # чтобы подсказки были релевантны текущей выборке (поиск как фильтр).
+    fam_sel = [f for f in (x.strip() for x in (request.args.get("family") or "").split(",")) if f and f in all_family_ids()]
+    style_sel = [s for s in (x.strip() for x in (request.args.get("style") or "").split(",")) if s]
+    producer_sel = [p for p in (x.strip() for x in (request.args.get("producer") or "").split(",")) if p]
+    country_sel = [c for c in (x.strip() for x in (request.args.get("country") or "").split(",")) if c]
+    abv_min = request.args.get("abv_min", type=float)
+    abv_max = request.args.get("abv_max", type=float)
+    with_photo = request.args.get("with_photo", type=int)
+    has_filters = any([fam_sel, style_sel, producer_sel, country_sel, abv_min is not None, abv_max is not None, with_photo])
+
+    rows_map = {}
+    if has_filters:
+        ids = [it["id"] for it in results]
+        if ids:
+            placeholders = ",".join(["?"] * len(ids))
+            for r in db.execute(
+                f"SELECT id, style_family, style, producer, brewery_country, abv, local_image "
+                f"FROM products_full WHERE id IN ({placeholders})",
+                ids,
+            ).fetchall():
+                rows_map[r["id"]] = r
+
+        def _price_num(price_str):
+            if not price_str:
+                return None
+            try:
+                return float(str(price_str).replace(" ₽", "").replace(" ", "").replace(chr(160), ""))
+            except ValueError:
+                return None
+
+        filtered = []
+        for it in results:
+            r = rows_map.get(it["id"])
+            if r is None:
+                continue
+            if fam_sel and r["style_family"] not in fam_sel:
+                continue
+            if style_sel and r["style"] not in style_sel:
+                continue
+            if producer_sel and r["producer"] not in producer_sel:
+                continue
+            if country_sel and r["brewery_country"] not in country_sel:
+                continue
+            if abv_min is not None and (r["abv"] is None or r["abv"] < abv_min):
+                continue
+            if abv_max is not None and (r["abv"] is None or r["abv"] > abv_max):
+                continue
+            if with_photo and (not r["local_image"]):
+                continue
+            filtered.append(it)
+        results = filtered
+
     out = []
-    for item in res["results"]:
+    for item in results:
         out.append({
             "id": item["id"],
             "name": item["name"],

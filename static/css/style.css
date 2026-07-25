@@ -1620,15 +1620,39 @@ a:hover { text-decoration: underline; }
 
 /* Правая колонка: результаты */
 .catalog-results { min-width: 0; }
-.cr-header {
+/* Панель управления выдачей каталога: поиск + сортировка + вид + счётчик */
+.cr-toolbar {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
   gap: 10px;
+  flex-wrap: wrap;
   margin-bottom: 14px;
   font-size: 14px;
   color: var(--muted);
+}
+.cr-search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+}
+.cr-search {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 14px;
+}
+.cr-search:focus { outline: 2px solid var(--accent); border-color: transparent; }
+.suggest-box--cr {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  z-index: 50;
 }
 .cr-controls {
   display: flex;
@@ -1636,7 +1660,45 @@ a:hover { text-decoration: underline; }
   gap: 8px;
   flex-wrap: wrap;
 }
-.cr-sort { min-width: 150px; padding: 7px 10px; }
+.cr-count { font-size: 13px; white-space: nowrap; }
+.icon-btn {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 15px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.icon-btn:hover { border-color: var(--accent); }
+.cr-sort {
+  min-width: 150px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 13px;
+}
+/* Кнопка раскрытия фильтров — только на мобильном */
+.fs-mobile-toggle { display: none; }
+/* Кнопка «Очистить» внутри мульти-дропауна */
+.fs-ms-clear {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: right;
+  background: transparent;
+  border: 0;
+  color: var(--accent);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 4px 6px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid var(--border);
+}
+.fs-ms-clear:hover { text-decoration: underline; }
 /* Поиск внутри выпадающего мульти-селекта (для длинных списков пивоварен) */
 .fs-ms-search {
   width: 100%;

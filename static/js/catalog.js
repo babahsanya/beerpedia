@@ -131,7 +131,31 @@
       display.textContent = checked.length
         ? `Выбрано: ${checked.length}`
         : defaultText;
+      // показываем/прячем кнопку очистить
+      if (clearBtn) clearBtn.style.display = checked.length ? "" : "none";
     }
+
+    // Кнопка «Очистить» в шапке дропауна
+    let clearBtn = options.querySelector(".fs-ms-clear");
+    if (options.dataset.clearBtn === "1" && !clearBtn) {
+      clearBtn = document.createElement("button");
+      clearBtn.type = "button";
+      clearBtn.className = "fs-ms-clear";
+      clearBtn.textContent = "Очистить";
+      clearBtn.style.display = "none";
+      clearBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        checkboxes.forEach((cb) => { cb.checked = false; });
+        sync();
+        form.submit();
+      });
+      // вставляем после поиска (если есть) или в начало
+      const searchEl = options.querySelector(".fs-ms-search");
+      if (searchEl) options.insertBefore(clearBtn, searchEl.nextSibling);
+      else options.insertBefore(clearBtn, options.firstChild);
+    }
+
     checkboxes.forEach((cb) => {
       cb.addEventListener("change", () => {
         sync();
@@ -272,6 +296,18 @@
       nameBox.hidden = false;
     }
 
+    // Собираем активные фильтры из hidden-полей формы, чтобы подсказки
+    // были релевантны текущей выборке (поиск как фильтр поверх остальных).
+    function collectFilters() {
+      const params = new URLSearchParams();
+      ["family", "style", "producer", "country", "abv_min", "abv_max",
+       "price_min", "price_max", "with_photo"].forEach((name) => {
+        const el = form.querySelector('input[name="' + name + '"]');
+        if (el && el.value) params.set(name, el.value);
+      });
+      return params.toString();
+    }
+
     nameInput.addEventListener("input", () => {
       const q = nameInput.value.trim();
       if (q === lastQuery) return;
@@ -282,7 +318,9 @@
       }
       clearTimeout(timer);
       timer = setTimeout(() => {
-        fetch("/api/suggest?q=" + encodeURIComponent(q))
+        const fqs = collectFilters();
+        const url = "/api/suggest?q=" + encodeURIComponent(q) + (fqs ? "&" + fqs : "");
+        fetch(url)
           .then((r) => r.json())
           .then((data) => {
             if (Array.isArray(data)) {
@@ -293,6 +331,15 @@
           })
           .catch(() => { nameBox.hidden = true; });
       }, 200);
+    });
+
+    // Enter — применить введённый текст как фильтр (сабмит формы)
+    nameInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        nameBox.hidden = true;
+        form.submit();
+      }
     });
 
     nameInput.addEventListener("focus", () => {

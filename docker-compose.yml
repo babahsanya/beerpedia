@@ -1,0 +1,56 @@
+# docker-compose.yml — пивная энциклопедия (Flask + Nginx).
+#
+# Запуск: docker compose up -d
+# Остановка: docker compose down
+# Логи: docker compose logs -f app
+# Обновление данных: docker compose exec app python run_full_pipeline.py
+#
+# Volumes (данные сохраняются между пересборками):
+#   beer_data → beer_database.db (БД)
+#   beer_static_images → static/images/ (фото пива)
+#   beer_static_breweries → static/breweries/ (логотипы пивоварен)
+
+services:
+  app:
+    build: .
+    container_name: beer_app
+    restart: unless-stopped
+    volumes:
+      # БД и данные — персистентный volume
+      - beer_data:/app/data
+      # Симлинк: beer_database.db → /app/data/beer_database.db
+      # (парсер пишет в текущую директорию, Flask читает из /app)
+      - beer_data:/app/beer_database_db_mount
+      # Кеш картинок
+      - beer_static_images:/app/static/images
+      - beer_static_breweries:/app/static/breweries
+    environment:
+      - PYTHONUNBUFFERED=1
+    expose:
+      - "8000"
+    networks:
+      - beer_net
+
+  nginx:
+    image: nginx:alpine
+    container_name: beer_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - beer_static_images:/app/static/images:ro
+      - beer_static_breweries:/app/static/breweries:ro
+    depends_on:
+      - app
+    networks:
+      - beer_net
+
+volumes:
+  beer_data:
+  beer_static_images:
+  beer_static_breweries:
+
+networks:
+  beer_net:
+    driver: bridge

@@ -1,0 +1,36 @@
+# Исключаем из Docker-образа — эти файлы генерируются/обновляются в runtime
+.venv/
+venv/
+__pycache__/
+*.pyc
+.git/
+.gitignore
+.history/
+.vscode/
+.zcode/
+.zscripts/
+
+# БД и данные — подключаются как volume, НЕ в образе!
+beer_database.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Логи
+*.log
+logs/
+
+# Кеш картинок и логотипы — volume
+static/images/
+static/breweries/
+
+# Временные файлы
+discovered_urls.txt
+код.txt
+*.bak
+*.tmp
+.tmp_*
+
+# Документация (не нужна в runtime)
+README.md
+*.md

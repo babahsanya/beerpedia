@@ -8,27 +8,17 @@
   {# ============ ЛЕВАЯ КОЛОНКА: ФАСЕТНЫЕ ФИЛЬТРЫ (всегда открыта) ============ #}
   <aside class="filters-sidebar" id="filtersSidebar">
     <div class="fs-header">
-      <span class="fs-title">🔧 Фильтры</span>
-      <a href="{{ url_for('catalog') }}" class="fs-reset">Сбросить</a>
-    </div>
-
-    {# Поиск по названию (с живыми подсказками) #}
-    <div class="fs-group">
-      <label class="fs-label">Название</label>
-      <div class="fs-input-suggest">
-        <input type="text" name="name" id="nameInput" value="{{ filters.name }}" placeholder="часть названия..." class="fs-input" autocomplete="off">
-        <div class="suggest-box suggest-box--inline" id="nameSuggestBox" hidden></div>
-      </div>
+      <a href="{{ url_for('catalog') }}" class="fs-reset">↺ Сбросить всё</a>
     </div>
 
     {# Пивовар — выпадающий алфавитный список (мультивыбор) #}
     <div class="fs-group">
-      <label class="fs-label">Пивовар <span class="fs-hint">(можно несколько)</span></label>
+      <label class="fs-label">Пивовар</label>
       <div class="fs-multiselect" id="producerMulti">
         <div class="fs-ms-display">
           {% if producers_selected %}Выбрано: {{ producers_selected|length }}{% else %}Все пивовары{% endif %}
         </div>
-        <div class="fs-ms-options" id="producerOptions">
+        <div class="fs-ms-options" id="producerOptions" data-clear-btn="1">
           {% for p in producer_options %}
             <label class="fs-ms-option">
               <input type="checkbox" value="{{ p }}" data-producer-cb {{ 'checked' if p in producers_selected }}>
@@ -40,9 +30,9 @@
       <input type="hidden" name="producer" id="producerInput" value="{{ filters.producer }}">
     </div>
 
-    {# Дерево стилей: Семья → подстили (expand/collapse) #}
+    {# Стили: Семья → подстили (expand/collapse) #}
     <div class="fs-group">
-      <label class="fs-label">Стили <span class="fs-hint">(дерево)</span></label>
+      <label class="fs-label">Стили</label>
       <div class="fs-style-tree" id="styleTree">
         {% for fam in style_tree %}
           <div class="fst-node" data-family="{{ fam.family_id }}">
@@ -76,7 +66,7 @@
         <div class="fs-ms-display">
           {% if countries_selected %}Выбрано: {{ countries_selected|length }}{% else %}Все страны{% endif %}
         </div>
-        <div class="fs-ms-options" id="countryOptions">
+        <div class="fs-ms-options" id="countryOptions" data-searchable="1" data-clear-btn="1">
           {% for c in country_options %}
             <label class="fs-ms-option">
               <input type="checkbox" value="{{ c }}" data-country-cb {{ 'checked' if c in countries_selected }}>
@@ -142,11 +132,15 @@
 
   {# ============ ПРАВАЯ КОЛОНКА: РЕЗУЛЬТАТЫ ============ #}
   <section class="catalog-results">
-    <div class="cr-header">
-      <span class="cr-count">Найдено: <strong>{{ total }}</strong> позиций</span>
+    {# Панель управления выдачей: поиск + сортировка + вид + счётчик #}
+    <div class="cr-toolbar">
+      <div class="cr-search-wrap">
+        <input type="text" name="name" id="nameInput" value="{{ filters.name }}" placeholder="🔍 Поиск по названию..." class="cr-search" autocomplete="off">
+        <div class="suggest-box suggest-box--cr" id="nameSuggestBox" hidden></div>
+      </div>
       <div class="cr-controls">
-        <button type="button" class="fs-mobile-toggle" id="mobileFiltersToggle">🔧 Фильтры</button>
-        <select name="sort" class="fs-input cr-sort" onchange="document.getElementById('catalogForm').submit()">
+        <button type="button" class="icon-btn fs-mobile-toggle" id="mobileFiltersToggle" title="Фильтры" aria-label="Фильтры">🔧</button>
+        <select name="sort" class="cr-sort" onchange="document.getElementById('catalogForm').submit()">
           {% for key, label in sort_options.items() %}
             <option value="{{ key }}" {{ 'selected' if filters.sort == key }}>{{ label }}</option>
           {% endfor %}
@@ -155,6 +149,7 @@
           <button type="button" class="view-btn {{ 'active' if filters.view != 'list' }}" data-view="grid" title="Сетка">▦</button>
           <button type="button" class="view-btn {{ 'active' if filters.view == 'list' }}" data-view="list" title="Список">☰</button>
         </div>
+        <span class="cr-count">Найдено: <strong>{{ total }}</strong></span>
       </div>
     </div>
     <input type="hidden" name="view" id="viewInput" value="{{ filters.view }}">
