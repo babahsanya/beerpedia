@@ -143,8 +143,8 @@ python style_guide.py --stats         # сводка по стилям
 
 ```bash
 # 1. Клонируем репо на VPS
-git clone https://github.com/babahsanya/pars-craftbeer.git
-cd pars-craftbeer
+git clone https://github.com/babahsanya/beerpedia.git
+cd beerpedia
 
 # 2. (Опционально) Настраиваем домен
 cp .env.example .env
@@ -176,11 +176,11 @@ docker compose logs -f app
 docker compose down
 
 # Копируем локальную базу в volume
-docker run --rm -v $(pwd)/beer_database.db:/source -v pars-craftbeer_beer_data:/dest \
+docker run --rm -v $(pwd)/beer_database.db:/source -v beerpedia_beer_data:/dest \
     alpine cp /source /dest/beer_database.db
 
 # Копируем картинки (если есть локально)
-docker run --rm -v $(pwd)/static/images:/source -v pars-craftbeer_beer_static_images:/dest \
+docker run --rm -v $(pwd)/static/images:/source -v beerpedia_beer_static_images:/dest \
     alpine sh -c "cp -r /source/* /dest/"
 
 # Запускаем снова — теперь с готовой базой
@@ -227,7 +227,7 @@ sudo certbot renew --dry-run
 
 ```
 VPS
-├── pars-craftbeer/          # код + Dockerfile
+├── beerpedia/               # код + Dockerfile
 │   ├── Dockerfile
 │   ├── docker-compose.yml
 │   ├── nginx.conf

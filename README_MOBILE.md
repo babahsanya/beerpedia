@@ -17,7 +17,7 @@
 Откройте Termux и вставьте одну команду:
 
 ```bash
-pkg install curl -y && curl -fsSL https://raw.githubusercontent.com/babahsanya/pars-craftbeer/main/setup.sh | bash
+pkg install curl -y && curl -fsSL https://raw.githubusercontent.com/babahsanya/beerpedia/main/setup.sh | bash
 ```
 
 Скрипт сам:
@@ -221,7 +221,7 @@ git pull
 
 ```bash
 # Установка (один раз)
-pkg install curl -y && curl -fsSL https://raw.githubusercontent.com/babahsanya/pars-craftbeer/main/setup.sh | bash
+pkg install curl -y && curl -fsSL https://raw.githubusercontent.com/babahsanya/beerpedia/main/setup.sh | bash
 
 # Запуск
 beerpedia

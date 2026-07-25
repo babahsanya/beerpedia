@@ -11,7 +11,7 @@
 #
 # Запуск в Termux:
 #   pkg install curl -y
-#   curl -fsSL https://raw.githubusercontent.com/babahsanya/pars-craftbeer/main/setup.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/babahsanya/beerpedia/main/setup.sh | bash
 #   (или просто: bash setup.sh)
 # ============================================================================
 
@@ -49,7 +49,7 @@ if [ -d "$PROJECT_DIR" ]; then
     git pull origin main >/dev/null 2>&1 || true
 else
     cd "$HOME"
-    git clone https://github.com/babahsanya/pars-craftbeer.git beerpedia
+    git clone https://github.com/babahsanya/beerpedia.git beerpedia
     cd "$PROJECT_DIR"
 fi
 echo -e "${GREEN}✓ Проект клонирован в ~/beerpedia${NC}"
