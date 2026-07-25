@@ -1015,6 +1015,36 @@ a:hover { text-decoration: underline; }
   font-size: 11px;
 }
 
+/* Чипсы стилей на странице пивоварни + мини-фильтры */
+.bd-styles { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.bd-style-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+  text-decoration: none;
+  transition: border-color 0.12s ease, transform 0.12s ease;
+}
+.bd-style-chip:hover { border-color: var(--accent); transform: translateY(-1px); text-decoration: none; }
+.bd-style-n {
+  padding: 1px 7px; border-radius: 999px;
+  background: var(--chip); color: var(--muted); font-size: 11px;
+}
+.fb-input {
+  padding: 8px 12px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--panel-2);
+  color: var(--text); font-size: 13px; min-width: 180px;
+}
+.fb-select {
+  padding: 8px 10px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--panel-2);
+  color: var(--text); font-size: 13px;
+}
+.fb-check { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: var(--muted); }
+
 /* ===== CATALOG FILTERS PANEL ===== */
 .filters-toggle { margin-bottom: 12px; }
 .filters-panel {

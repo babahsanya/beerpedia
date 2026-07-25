@@ -19,27 +19,34 @@
 </div>
 
 {% if style_breakdown %}
-  <h2 class="section-title">🎨 Распределение по стилям</h2>
-  <div class="grid-tight">
+  <h2 class="section-title">🎨 Стили пивоварни</h2>
+  <div class="bd-styles">
     {% for s in style_breakdown %}
-      <a class="stat-card" href="{{ url_for('style_detail', slug=s.slug) }}">
-        <span class="label">{{ s.style }}</span>
-        <span class="num">{{ s.count }}</span>
+      <a class="bd-style-chip" href="{{ url_for('catalog', producer=brewery_name, style=s.style) }}">
+        {{ s.style }} <span class="bd-style-n">{{ s.count }}</span>
       </a>
     {% endfor %}
   </div>
 {% endif %}
 
 <h2 class="section-title">🍺 Все позиции пивоварни</h2>
-<form class="filters-bar" method="get">
-  <select name="style">
-    <option value="">Все стили</option>
-    {% for st in style_breakdown %}
-      <option value="{{ st.style }}" {{ 'selected' if current_style == st.style }}>{{ st.style }} ({{ st.count }})</option>
-    {% endfor %}
+<form class="filters-bar" method="get" action="{{ url_for('catalog') }}">
+  <input type="hidden" name="producer" value="{{ brewery_name }}">
+  <input type="text" name="name" placeholder="🔍 Поиск позиции..." class="fb-input">
+  <select name="abv_max" class="fb-select">
+    <option value="">Любая крепость</option>
+    <option value="4.5">Лёгкое (до 4.5%)</option>
+    <option value="6">Среднее (до 6%)</option>
+    <option value="8">Крепкое (до 8%)</option>
   </select>
-  <button class="btn btn-primary" type="submit">Применить</button>
-  {% if current_style %}<a class="btn" href="{{ url_for('brewery_detail', slug=brewery_slug) }}">Сбросить</a>{% endif %}
+  <select name="price_max" class="fb-select">
+    <option value="">Любая цена</option>
+    <option value="300">До 300 ₽</option>
+    <option value="500">До 500 ₽</option>
+    <option value="800">До 800 ₽</option>
+  </select>
+  <label class="fb-check"><input type="checkbox" name="with_photo" value="1"> С фото</label>
+  <button class="btn btn-primary" type="submit">Показать в каталоге →</button>
 </form>
 
 <div class="grid">

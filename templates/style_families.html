@@ -24,7 +24,7 @@
     <div class="ft-children">
       <div class="ft-children-inner">
         {% for s in f.styles %}
-          <a class="ft-style-chip" href="{{ url_for('style_detail', slug=s.slug) }}">
+          <a class="ft-style-chip" href="{{ url_for('catalog', style=s.style) }}">
             {{ s.style }} <span class="ft-style-n">{{ s.count }}</span>
           </a>
         {% endfor %}
@@ -37,17 +37,6 @@
     </div>
   </div>
   {% endfor %}
-</div>
-
-<div class="panel" style="margin-top: 28px;">
-  <h3>ℹ️ О классификации</h3>
-  <p style="line-height: 1.6;">
-    Все стили в базе (часть на русском, часть на английском — как в источнике) сгруппированы
-    по семействам. Семейства объединяют дубликаты: например, «IPA - American» и «Американский ИПА»
-    попадают в одно семейство
-    <a href="{{ url_for('style_family_detail', family='ipa') }}">IPA</a>.
-    Кликните на название стиля внутри семейства — откроется подробная карточка с описанием BJCP.
-  </p>
 </div>
 {% endblock %}
 
