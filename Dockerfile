@@ -21,7 +21,11 @@ RUN useradd -m -u 1000 beer && chown -R beer:beer /app
 USER beer
 
 # Точка входа: инициализация БД при первом запуске + gunicorn
-RUN chmod +x entrypoint.sh
+RUN chmod +x entrypoint.sh backup.sh monitor.sh
+
+# Healthcheck: проверяем что Flask отвечает каждые 30 сек
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/').read()" || exit 1
 
 EXPOSE 8000
 

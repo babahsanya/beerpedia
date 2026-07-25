@@ -141,9 +141,15 @@ def get_db() -> sqlite3.Connection:
     if "db" not in g:
         if not DB_PATH.exists():
             abort(500, description=f"База не найдена: {DB_PATH}")
-        conn = sqlite3.connect(DB_PATH)
+        # timeout=10: ждать до 10 сек если БД заблокирована другим worker'ом
+        # (4 Gunicorn workers + парсер = конкурентный доступ к SQLite)
+        conn = sqlite3.connect(str(DB_PATH), timeout=10)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA journal_mode = WAL")
+        # busy_timeout: SQLite будет ждать снятия блокировки вместо ошибки
+        conn.execute("PRAGMA busy_timeout = 10000")
+        # foreign_keys: обеспечиваем целостность (если будут FK)
+        conn.execute("PRAGMA foreign_keys = ON")
         g.db = conn
     return g.db
 

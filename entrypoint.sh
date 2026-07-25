@@ -29,11 +29,18 @@ if [ ! -f /app/data/beer_styles.db ]; then
     python /app/style_guide.py 2>/dev/null || true
 fi
 
-echo "🚀 Запуск Gunicorn (production server)..."
+echo "🚕 Запуск Gunicorn (production server)..."
+# Gunicorn с ротацией логов и ограничением memory/timeout.
+# --max-requests: воркер перезапускается после 1000 запросов (защита от memory leaks).
+# --access-logfile -: логи доступа в stdout (Docker их собирает).
 exec gunicorn \
     --bind 0.0.0.0:8000 \
-    --workers 4 \
+    --workers ${GUNICORN_WORKERS:-4} \
     --timeout 120 \
+    --graceful-timeout 30 \
+    --max-requests 1000 \
+    --max-requests-jitter 50 \
     --access-logfile - \
     --error-logfile - \
+    --log-level warning \
     app:app
