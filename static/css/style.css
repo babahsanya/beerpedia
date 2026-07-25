@@ -1520,11 +1520,108 @@ a:hover { text-decoration: underline; }
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
   margin-bottom: 14px;
   font-size: 14px;
   color: var(--muted);
 }
-.fs-mobile-toggle { display: none; }
+.cr-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.cr-sort { min-width: 150px; padding: 7px 10px; }
+/* Поиск внутри выпадающего мульти-селекта (для длинных списков пивоварен) */
+.fs-ms-search {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 7px 10px;
+  margin-bottom: 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 13px;
+  position: sticky;
+  top: 0;
+}
+/* Подсказки внутри поля каталога (позиционирование относительно обёртки) */
+.fs-input-suggest { position: relative; }
+.suggest-box--inline {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+}
+
+/* ===== ДЕРЕВО СТИЛЕЙ ===== */
+.fs-style-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 340px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px;
+  background: var(--panel-2);
+}
+.fst-node { border-radius: 6px; }
+.fst-family {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 7px 8px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 6px;
+  text-align: left;
+}
+.fst-family:hover { background: var(--panel); }
+.fst-family.open { background: var(--panel); }
+.fst-caret {
+  font-size: 10px;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+  display: inline-block;
+}
+.fst-family.open .fst-caret { transform: rotate(90deg); }
+.fst-icon { font-size: 15px; }
+.fst-name { flex: 1; }
+.fst-count {
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--chip);
+  padding: 1px 7px;
+  border-radius: 999px;
+}
+.fst-children {
+  display: none;
+  flex-direction: column;
+  padding-left: 24px;
+  padding-bottom: 4px;
+}
+.fst-node:has(.fst-family.open) .fst-children { display: flex; }
+.fst-child {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  font-size: 12.5px;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 5px;
+}
+.fst-child:hover { background: var(--panel); color: var(--text); }
+.fst-child input { width: 14px; height: 14px; flex-shrink: 0; }
 
 /* Мобильная адаптация каталога */
 @media (max-width: 768px) {
