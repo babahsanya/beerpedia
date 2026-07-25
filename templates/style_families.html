@@ -1,34 +1,64 @@
 {% extends "base.html" %}
-{% block title %}Семьи стилей — Пивная энциклопедия{% endblock %}
+{% block title %}Стили — Пивная энциклопедия{% endblock %}
 
 {% block content %}
-<h1 class="page-title">🎨 Семьи стилей</h1>
-<div class="page-subtitle">{{ families|length }} групп · ~95% позиций классифицированы автоматически</div>
+<h1 class="page-title">🎨 Стили пива</h1>
+<div class="page-subtitle">{{ families|length }} семейств · нажмите на семью, чтобы раскрыть её стили</div>
 
-<div class="grid">
+<div class="families-tree">
   {% for f in families %}
-    <a class="family-card" href="{{ url_for('style_family_detail', family=f.id) }}">
-      <div class="fc-icon">{{ f.icon }}</div>
-      <div class="fc-body">
-        <div class="fc-title">{{ f.title }}</div>
-        <div class="fc-count">{{ f.count }} позиций</div>
-        <div class="fc-meta">
-          {% if f.styles_count %}{{ f.styles_count }} стилей{% endif %}
-          {% if f.avg_abv %} · {{ '%.1f'|format(f.avg_abv) }}% ABV{% endif %}
-        </div>
+  <div class="ft-card" data-family="{{ f.id }}">
+    <div class="ft-header">
+      <button type="button" class="ft-toggle" aria-label="Раскрыть">
+        <span class="ft-caret">▶</span>
+      </button>
+      <a class="ft-main" href="{{ url_for('style_family_detail', family=f.id) }}">
+        <span class="ft-icon">{{ f.icon }}</span>
+        <span class="ft-title-wrap">
+          <span class="ft-title">{{ f.title }}</span>
+          <span class="ft-meta">{{ f.count }} позиций · {{ f.styles_count }} стилей{% if f.avg_abv %} · {{ '%.1f'|format(f.avg_abv) }}% ABV{% endif %}</span>
+        </span>
+      </a>
+      <a class="ft-to-catalog" href="{{ url_for('catalog', family=f.id) }}" title="Все позиции в каталоге">В каталог →</a>
+    </div>
+    <div class="ft-children">
+      <div class="ft-children-inner">
+        {% for s in f.styles %}
+          <a class="ft-style-chip" href="{{ url_for('style_detail', slug=s.slug) }}">
+            {{ s.style }} <span class="ft-style-n">{{ s.count }}</span>
+          </a>
+        {% endfor %}
+        {% if f.styles_count > f.styles|length %}
+          <a class="ft-style-chip ft-more" href="{{ url_for('style_family_detail', family=f.id) }}">
+            ещё {{ f.styles_count - f.styles|length }} →
+          </a>
+        {% endif %}
       </div>
-    </a>
+    </div>
+  </div>
   {% endfor %}
 </div>
 
 <div class="panel" style="margin-top: 28px;">
-  <h3>ℹ️ Как работает классификация</h3>
+  <h3>ℹ️ О классификации</h3>
   <p style="line-height: 1.6;">
-    Все ~590 уникальных стилей в базе (на смеси русского и английского) автоматически
-    отнесены к 15 семьям по keyword-правилам. Это решает проблему дублирования:
-    «IPA - American» и «Американский ИПА» попадают в одну семью
+    Все стили в базе (часть на русском, часть на английском — как в источнике) сгруппированы
+    по семействам. Семейства объединяют дубликаты: например, «IPA - American» и «Американский ИПА»
+    попадают в одно семейство
     <a href="{{ url_for('style_family_detail', family='ipa') }}">IPA</a>.
-    Кликните на семью, чтобы увидеть все её конкретные стили, топ пивоварен и позиции.
+    Кликните на название стиля внутри семейства — откроется подробная карточка с описанием BJCP.
   </p>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Раскрытие/закрытие семей (expand/collapse)
+document.querySelectorAll('.ft-toggle').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var card = btn.closest('.ft-card');
+    card.classList.toggle('open');
+  });
+});
+</script>
 {% endblock %}

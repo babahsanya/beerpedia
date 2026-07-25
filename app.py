@@ -444,6 +444,16 @@ def style_families():
             "styles_count": row["s"],
             "avg_abv": row["a"],
             "top_style": top_style_row["style"] if top_style_row else None,
+            # Топ-стили семьи (до 12) с count — для expand-дерева на странице
+            "styles": [
+                {"style": r["style"], "count": r["c"], "slug": slugify(r["style"])}
+                for r in cur.execute(
+                    "SELECT style, COUNT(*) AS c FROM products_full "
+                    "WHERE style_family = ? AND style IS NOT NULL AND style != '' "
+                    "GROUP BY style ORDER BY c DESC LIMIT 12",
+                    (fid,),
+                ).fetchall()
+            ],
         })
     # Сортировка: основные семьи по убыванию кол-ва, 'other' всегда в конце
     families.sort(key=lambda f: (f["id"] == "other", -f["count"]))

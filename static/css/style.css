@@ -826,35 +826,101 @@ a:hover { text-decoration: underline; }
   color: #0b1220;
 }
 
-/* ===== FAMILY CARD (сетка семей на /style-families) ===== */
-.family-card {
+/* ===== СЕМЬИ СТИЛЕЙ: expand-дерево (/style-families) ===== */
+.families-tree { display: flex; flex-direction: column; gap: 10px; }
+.ft-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  overflow: hidden;
+}
+.ft-card.open { border-color: var(--accent); }
+.ft-header {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 18px;
-  background: linear-gradient(135deg, rgba(17,24,39,0.95), rgba(15,23,42,0.7));
+  gap: 10px;
+  padding: 12px 14px;
+}
+.ft-toggle {
+  width: 30px; height: 30px;
+  flex-shrink: 0;
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+}
+.ft-toggle:hover { border-color: var(--accent); color: var(--text); }
+.ft-caret { display: inline-block; transition: transform 0.15s ease; }
+.ft-card.open .ft-caret { transform: rotate(90deg); }
+.ft-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
   text-decoration: none;
   color: var(--text);
-  transition: transform 0.15s ease, border-color 0.15s ease;
 }
-.family-card:hover {
-  transform: translateY(-3px);
-  border-color: var(--accent);
-  text-decoration: none;
-}
-.family-card .fc-icon {
-  font-size: 38px;
+.ft-main:hover { text-decoration: none; }
+.ft-main:hover .ft-title { color: var(--accent); }
+.ft-icon {
+  font-size: 26px;
+  width: 42px; height: 42px;
   flex-shrink: 0;
-  width: 56px; height: 56px;
   display: flex; align-items: center; justify-content: center;
   background: var(--panel-2);
-  border-radius: 12px;
+  border-radius: 10px;
 }
-.family-card .fc-title { font-size: 16px; font-weight: 600; }
-.family-card .fc-count { font-size: 13px; color: var(--accent); margin-top: 2px; }
-.family-card .fc-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.ft-title-wrap { display: flex; flex-direction: column; min-width: 0; }
+.ft-title { font-size: 16px; font-weight: 600; }
+.ft-meta { font-size: 12px; color: var(--muted); margin-top: 1px; }
+.ft-to-catalog {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--accent);
+  text-decoration: none;
+  padding: 6px 10px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+.ft-to-catalog:hover { border-color: var(--accent); background: var(--panel-2); }
+.ft-children {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.25s ease;
+}
+.ft-card.open .ft-children { max-height: 500px; }
+.ft-children-inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 14px 14px 54px;
+}
+.ft-style-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+  text-decoration: none;
+}
+.ft-style-chip:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
+.ft-style-n {
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--chip);
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+.ft-more { color: var(--accent); font-style: italic; }
 
 /* ===== FAMILY HERO (страница семьи) ===== */
 .family-hero {
