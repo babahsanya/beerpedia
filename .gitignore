@@ -26,6 +26,9 @@ logs/
 # Кеш картинок (генерируется image_cache.py, ~38k файлов)
 static/images/
 
+# Логотипы пивоварен (генерируется fetch_brewery_logos.py)
+static/breweries/
+
 # Дампы/черновики
 код.txt
 *.bak

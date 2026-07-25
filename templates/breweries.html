@@ -36,7 +36,11 @@
         {% for b in items %}
         <a class="brewery-card brewery-item" href="{{ url_for('brewery_detail', slug=b.slug) }}"
            data-name="{{ b.producer|lower }}">
+          {% if b.brewery_logo %}
+          <div class="bc-logo"><img src="{{ url_for('static', filename=b.brewery_logo.replace('static/', '')) }}" alt="{{ b.producer }}" loading="lazy"></div>
+          {% else %}
           <div class="bc-avatar">{{ b.producer[0] }}</div>
+          {% endif %}
           <div class="bc-info">
             <div class="bc-name">{{ b.producer }}</div>
             <div class="bc-geo">{{ b.city }}</div>

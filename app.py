@@ -193,91 +193,8 @@ def _fmt_price_per_100ml(b) -> str:
 
 @app.route("/")
 def index():
-    db = get_db()
-    cur = db.cursor()
-
-    cur.execute("SELECT COUNT(*) FROM products_full")
-    total_beers = cur.fetchone()[0]
-    cur.execute("SELECT COUNT(DISTINCT style) FROM products_full WHERE style IS NOT NULL AND style != ''")
-    total_styles = cur.fetchone()[0]
-    cur.execute("SELECT COUNT(DISTINCT producer) FROM products_full WHERE producer IS NOT NULL AND producer != ''")
-    total_breweries = cur.fetchone()[0]
-    cur.execute("SELECT COUNT(DISTINCT brewery_country) FROM products_full WHERE brewery_country IS NOT NULL AND brewery_country != ''")
-    total_countries = cur.fetchone()[0]
-    cur.execute("SELECT COUNT(*) FROM products_full WHERE local_image IS NOT NULL AND local_image != ''")
-    with_photos = cur.fetchone()[0]
-
-    # Топ стилей (по количеству)
-    cur.execute(
-        "SELECT style, COUNT(*) AS c, AVG(abv) AS a FROM products_full "
-        "WHERE style IS NOT NULL AND style != '' GROUP BY style ORDER BY c DESC LIMIT 12"
-    )
-    top_styles = [{"style": r["style"], "count": r["c"], "avg_abv": r["a"], "slug": slugify(r["style"])} for r in cur.fetchall()]
-
-    # Топ пивоварен
-    cur.execute(
-        "SELECT producer, brewery_country, COUNT(*) AS c FROM products_full "
-        "WHERE producer IS NOT NULL AND producer != '' GROUP BY producer ORDER BY c DESC LIMIT 12"
-    )
-    top_breweries = [{"producer": r["producer"], "country": r["brewery_country"], "count": r["c"], "slug": slugify(r["producer"])} for r in cur.fetchall()]
-
-    # Топ стран
-    cur.execute(
-        "SELECT brewery_country, COUNT(*) AS c FROM products_full "
-        "WHERE brewery_country IS NOT NULL AND brewery_country != '' GROUP BY brewery_country ORDER BY c DESC LIMIT 12"
-    )
-    top_countries = [{"country": r["brewery_country"], "count": r["c"]} for r in cur.fetchall()]
-
-    # Случайные с фото
-    cur.execute(
-        "SELECT id, name, producer, style, abv, volume, price, local_image "
-        "FROM products_full WHERE local_image IS NOT NULL AND local_image != '' "
-        "ORDER BY RANDOM() LIMIT 12"
-    )
-    random_beers = cur.fetchall()
-
-    # Чипсы семей стилей для быстрого входа
-    family_chips = []
-    for fid in all_family_ids():
-        icon, title, _ = family_meta(fid)
-        row = cur.execute(
-            "SELECT COUNT(*) AS n FROM products_full WHERE style_family = ?", (fid,)
-        ).fetchone()
-        family_chips.append({"id": fid, "icon": icon, "title": title, "count": row["n"]})
-    family_chips.sort(key=lambda f: (f["id"] == "other", -f["count"]))
-
-    # Топ пивоварен как ранжированный чарт (с прогресс-баром)
-    max_brewery_count = top_breweries[0]["count"] if top_breweries else 1
-    for i, b in enumerate(top_breweries, 1):
-        b["rank"] = i
-        b["pct"] = int(b["count"] / max_brewery_count * 100) if max_brewery_count else 0
-
-    # Страны с эмодзи-флагами
-    country_flags = {
-        "Россия": "🇷🇺", "Бельгия": "🇧🇪", "Нидерланды": "🇳🇱",
-        "Великобритания": "🇬🇧", "Чехия": "🇨🇿", "Франция": "🇫🇷",
-        "Ирландия": "🇮🇪", "США": "🇺🇸", "Германия": "🇩🇪", "Швеция": "🇸🇪",
-        "Канада": "🇨🇦", "Финляндия": "🇫🇮", "Швейцария": "🇨🇭", "Чили": "🇨🇱",
-        "Испания": "🇪🇸", "Вьетнам": "🇻🇳", "Китай": "🇨🇳", "Таиланд": "🇹🇭",
-        "Италия": "🇮🇹", "Дания": "🇩🇰", "Норвегия": "🇳🇴", "Польша": "🇵🇱",
-        "Япония": "🇯🇵", "Австрия": "🇦🇹", "Португалия": "🇵🇹",
-    }
-    for c in top_countries:
-        c["flag"] = country_flags.get(c["country"], "🌐")
-
-    return render_template(
-        "index.html",
-        total_beers=total_beers,
-        total_styles=total_styles,
-        total_breweries=total_breweries,
-        total_countries=total_countries,
-        with_photos=with_photos,
-        top_styles=top_styles,
-        top_breweries=top_breweries,
-        top_countries=top_countries,
-        random_beers=random_beers,
-        family_chips=family_chips,
-    )
+    """Каталог является главной страницей сайта."""
+    return catalog()
 
 
 @app.route("/search")
@@ -731,7 +648,8 @@ def breweries():
         "COUNT(*) AS cnt, AVG(abv) AS avg_abv, "
         "COUNT(DISTINCT style) AS styles_n, "
         "COUNT(local_image) AS photos_n, "
-        "AVG(CAST(REPLACE(REPLACE(price, ' ₽', ''), ' ', '') AS REAL)) AS avg_price "
+        "AVG(CAST(REPLACE(REPLACE(price, ' ₽', ''), ' ', '') AS REAL)) AS avg_price, "
+        "MAX(brewery_logo) AS brewery_logo "
         "FROM products_full "
         "WHERE producer IS NOT NULL AND producer != '' "
         "GROUP BY producer"
@@ -749,6 +667,7 @@ def breweries():
             "photos_n": r["photos_n"],
             "avg_price": r["avg_price"],
             "slug": slugify(r["producer"]),
+            "brewery_logo": r["brewery_logo"] if r["brewery_logo"] else None,
         })
 
     # Сортировка
@@ -974,9 +893,15 @@ def catalog():
     if filters["name"]:
         where.append("name LIKE ?")
         params.append(f"%{filters['name']}%")
-    if filters["producer"]:
-        where.append("producer LIKE ?")
-        params.append(f"%{filters['producer']}%")
+
+    # Мульти-выбор пивоварен (CSV из выпадающего алфавитного списка).
+    producers_selected = [
+        p for p in (x.strip() for x in filters["producer"].split(",")) if p
+    ]
+    if producers_selected:
+        placeholders = ",".join(["?"] * len(producers_selected))
+        where.append(f"producer IN ({placeholders})")
+        params.extend(producers_selected)
 
     # Мульти-выбор семей стилей (CSV: family=ipa,sour).
     # Валидируем каждый против белого списка all_family_ids().
@@ -1071,6 +996,12 @@ def catalog():
         "SELECT DISTINCT brewery_country FROM products_full WHERE brewery_country IS NOT NULL AND brewery_country != '' ORDER BY brewery_country"
     ).fetchall()]
 
+    # Список пивоварен строго по алфавиту — для выпадающего фильтра.
+    producer_options = [r["producer"] for r in db.execute(
+        "SELECT DISTINCT producer FROM products_full "
+        "WHERE producer IS NOT NULL AND producer != '' ORDER BY producer COLLATE NOCASE"
+    ).fetchall()]
+
     # Границы цен для слайдера (по всей базе, не зависят от фильтров)
     price_bounds = db.execute(
         "SELECT MIN(CAST(REPLACE(REPLACE(REPLACE(price, ' ₽', ''), ' ', ''), CHAR(160), '') AS REAL)) AS mn, "
@@ -1079,6 +1010,31 @@ def catalog():
     ).fetchone()
     price_min_bound = int(price_bounds["mn"] or 0)
     price_max_bound = int(price_bounds["mx"] or 5000)
+
+    # Границы крепости для слайдера ABV (по всей базе)
+    abv_bounds = db.execute(
+        "SELECT MIN(abv) AS mn, MAX(abv) AS mx FROM products_full WHERE abv IS NOT NULL"
+    ).fetchone()
+    abv_min_bound = int((abv_bounds["mn"] or 0) // 1)
+    abv_max_bound = int(((abv_bounds["mx"] or 20) + 0.99) // 1)  # округляем вверх
+
+    # Дерево стилей: семья → [стили] (для древовидного фильтра).
+    # Стили группируются по style_family.
+    style_tree = []
+    for fid in all_family_ids():
+        icon, title, _ = family_meta(fid)
+        rows = db.execute(
+            "SELECT DISTINCT style FROM products_full "
+            "WHERE style IS NOT NULL AND style != '' AND style_family = ? ORDER BY style",
+            (fid,),
+        ).fetchall()
+        if rows:
+            style_tree.append({
+                "family_id": fid,
+                "family_icon": icon,
+                "family_title": title,
+                "styles": [r["style"] for r in rows],
+            })
 
     # Чипсы семей с кол-вом для UI
     family_chips = []
@@ -1099,12 +1055,17 @@ def catalog():
         filters=filters,
         style_options=style_options,
         country_options=country_options,
+        producer_options=producer_options,
+        style_tree=style_tree,
         family_chips=family_chips,
         families_selected=families_selected,
         countries_selected=countries_selected,
         styles_selected=styles_selected,
+        producers_selected=producers_selected,
         price_min_bound=price_min_bound,
         price_max_bound=price_max_bound,
+        abv_min_bound=abv_min_bound,
+        abv_max_bound=abv_max_bound,
         sort_options={
             "name": "По названию (А-Я)",
             "abv_desc": "По крепости (мощные)",
