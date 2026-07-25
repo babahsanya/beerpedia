@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ code }} — Пивная энциклопедия</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="logo" href="{{ url_for('index') }}">🍺 <span>Пивная энциклопедия</span></a>
+      </div>
+    </header>
+    <main class="container">
+      <div class="empty-state">
+        <div class="big">{{ code }}</div>
+        <p>{{ message }}</p>
+        <p style="margin-top: 16px;">
+          <a class="btn btn-primary" href="{{ url_for('index') }}">На главную</a>
+          <a class="btn" href="{{ url_for('catalog') }}">В каталог</a>
+        </p>
+      </div>
+    </main>
+  </body>
+</html>

@@ -182,9 +182,35 @@ def static_url(path: str | None) -> str:
     return url_for("static", filename=p)
 
 
-def parse_price_int(price_str: str | None) -> int | None:
-    if not price_str:
-        return None
+# Максимальная длина поискового запроса (защита от сверхдлинных input)
+MAX_QUERY_LENGTH = 200
+
+
+def sanitize_query(q: str | None) -> str:
+    """Очистка пользовательского ввода: ограничение длины, удаление control chars."""
+    if not q:
+        return ""
+    q = str(q).strip()[:MAX_QUERY_LENGTH]
+    # Удаляем control characters (кроме перевода строки/табуляции)
+    q = "".join(c for c in q if c == "\n" or c == "\t" or ord(c) >= 32)
+    return q
+
+
+def parse_safe_ids(ids_str: str | None, max_count: int = 500) -> list[int]:
+    """Безопасный парсинг списка ID из строки '1,2,3'.
+    Валидирует каждый как положительное число, ограничивает кол-во.
+    """
+    if not ids_str:
+        return []
+    parts = str(ids_str).split(",")
+    ids = []
+    for p in parts:
+        p = p.strip()
+        if p.isdigit():
+            ids.append(int(p))
+            if len(ids) >= max_count:
+                break
+    return ids
     m = re.search(r"\d+", str(price_str).replace(" ", ""))
     return int(m.group()) if m else None
 
@@ -274,7 +300,7 @@ def index():
 
 @app.route("/search")
 def search():
-    q = (request.args.get("q") or "").strip()
+    q = sanitize_query(request.args.get("q"))
     results = []
     correction = None
     candidates = []
@@ -306,7 +332,7 @@ def search():
 
 @app.route("/api/suggest")
 def api_suggest():
-    q = (request.args.get("q") or "").strip()
+    q = sanitize_query(request.args.get("q"))
     if len(q) < 2:
         return []
     db = get_db()
@@ -438,7 +464,7 @@ def api_search():
     Возвращает id, name, producer, style, style_family, abv, volume, price,
     local_image, original_url — всё что нужно для рендера карточки на клиенте.
     """
-    q = (request.args.get("q") or "").strip()
+    q = sanitize_query(request.args.get("q"))
     if len(q) < 2:
         return jsonify({"results": [], "count": 0, "correction": None})
     db = get_db()
@@ -493,12 +519,7 @@ def api_beers():
     GET /api/beers?ids=1,2,3 — список через запятую.
     """
     ids_raw = (request.args.get("ids") or "").strip()
-    if not ids_raw:
-        return jsonify({"results": [], "count": 0})
-    try:
-        ids = [int(x.strip()) for x in ids_raw.split(",") if x.strip().isdigit()]
-    except ValueError:
-        ids = []
+    ids = parse_safe_ids(ids_raw, max_count=500)
     if not ids:
         return jsonify({"results": [], "count": 0})
     placeholders = ",".join(["?"] * len(ids))
@@ -532,9 +553,8 @@ def favorites():
     """
     ids_raw = (request.args.get("ids") or "").strip()
     beers = []
-    if ids_raw:
-        ids = [int(x) for x in ids_raw.split(",") if x.strip().isdigit()]
-        if ids:
+    ids = parse_safe_ids(ids_raw, max_count=500)
+    if ids:
             placeholders = ",".join(["?"] * len(ids))
             db = get_db()
             beers = db.execute(
@@ -1547,38 +1567,29 @@ def compare():
 
 
 # =============================================================================
-# ERROR HANDLERS
+# ERROR HANDLERS — безопасные, без утечки информации
 # =============================================================================
 
 @app.errorhandler(404)
 def not_found(_e):
-    html = (
-        "<div class='empty-state'>"
-        "<div class='big'>404</div>"
-        "<p>Страница не найдена</p>"
-        "<p><a class='btn btn-primary' href='/'>На главную</a></p>"
-        "</div>"
-    )
-    return render_template_string_404(html), 404
+    return render_template("error.html", code=404, message="Страница не найдена"), 404
 
 
-def render_template_string_404(content_html: str):
-    """Рендер 404 с минимальным base-каркасом."""
-    from flask import render_template_string
-    return render_template_string(
-        """
-        <!doctype html>
-        <html lang="ru"><head><meta charset="utf-8">
-        <title>404 — Пивная энциклопедия</title>
-        <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-        </head><body>
-        <header class="site-header"><div class="header-inner">
-          <a class="logo" href="{{ url_for('index') }}">🍺 <span>Пивная энциклопедия</span></a>
-        </div></header>
-        <main class="container">""" + content_html + """</main>
-        </body></html>
-        """
-    )
+@app.errorhandler(403)
+def forbidden(_e):
+    return render_template("error.html", code=403, message="Доступ запрещён"), 403
+
+
+@app.errorhandler(429)
+def rate_limited(_e):
+    return render_template("error.html", code=429, message="Слишком много запросов. Попробуйте позже."), 429
+
+
+@app.errorhandler(500)
+def server_error(_e):
+    # В production НЕ показываем traceback пользователю
+    logging.exception("500 error: %s", _e)
+    return render_template("error.html", code=500, message="Внутренняя ошибка сервера"), 500
 
 
 if __name__ == "__main__":

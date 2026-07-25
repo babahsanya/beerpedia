@@ -16,6 +16,10 @@ RUN pip install --no-cache-dir -r requirements.txt gunicorn
 # Копируем код проекта
 COPY . .
 
+# Security: запускаем от непривилегированного пользователя
+RUN useradd -m -u 1000 beer && chown -R beer:beer /app
+USER beer
+
 # Точка входа: инициализация БД при первом запуске + gunicorn
 RUN chmod +x entrypoint.sh
 
