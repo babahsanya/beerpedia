@@ -114,7 +114,7 @@ fi
 # ──────────────────────────────────────────────────────────────────────────────
 # 5. ЯРЛЫК ЗАПУСКА
 # ──────────────────────────────────────────────────────────────────────────────
-echo -e "${YELLOW}[5/5] Создаю ярлык запуска...${NC}"
+echo -e "${YELLOW}[5/6] Создаю ярлык запуска...${NC}"
 
 # run.sh — быстрый запуск (без переустановки)
 cat > run.sh << 'EOF'
@@ -138,6 +138,46 @@ if ! grep -q "alias beerpedia=" "$BASHRC" 2>/dev/null; then
 fi
 
 # ──────────────────────────────────────────────────────────────────────────────
+# 6. ПРЕДЛОЖИТЬ СКАЧАТЬ ДАННЫЕ
+# ──────────────────────────────────────────────────────────────────────────────
+echo -e "${YELLOW}[6/6] Проверяю данные...${NC}"
+
+NEED_DATA=false
+if [ ! -f "beer_database.db" ]; then
+    NEED_DATA=true
+elif [ "$(python -c "import sqlite3; print(sqlite3.connect('beer_database.db').execute('SELECT COUNT(*) FROM products_full').fetchone()[0])" 2>/dev/null || echo 0)" -lt 100 ]; then
+    NEED_DATA=true
+fi
+
+if [ "$NEED_DATA" = true ]; then
+    echo ""
+    echo -e "${YELLOW}📦 База данных отсутствует или неполная.${NC}"
+    echo -e "${YELLOW}   Можно скачать полную базу + картинки (~250 МБ) с GitHub.${NC}"
+    echo ""
+    echo -e "   ${CYAN}y${NC} = скачать полные данные (рекомендуется, нужен Wi-Fi)"
+    echo -e "   ${CYAN}d${NC} = создать демо-базу (5 позиций, без интернета)"
+    echo -e "   ${CYAN}n${NC} = пропустить (разобраться позже)"
+    echo ""
+    read -r -p "   Ваш выбор [y/d/n]: " CHOICE
+
+    case "$CHOICE" in
+        y|Y)
+            echo ""
+            bash fetch_data.sh || echo -e "${RED}   Не удалось скачать. Попробуйте позже: bash fetch_data.sh${NC}"
+            ;;
+        d|D)
+            echo ""
+            bash create_demo_db.sh
+            ;;
+        *)
+            echo -e "${YELLOW}   Пропущено. Данные можно добавить позже:${NC}"
+            echo "     bash fetch_data.sh        # скачать с GitHub"
+            echo "     bash create_demo_db.sh    # демо-база"
+            ;;
+    esac
+fi
+
+# ──────────────────────────────────────────────────────────────────────────────
 # ФИНАЛ
 # ──────────────────────────────────────────────────────────────────────────────
 echo ""
@@ -146,17 +186,15 @@ echo -e "${GREEN}🎉 УСТАНОВКА ЗАВЕРШЕНА!${NC}"
 echo "============================================"
 echo ""
 echo -e "${CYAN}🚀 ЗАПУСК:${NC}"
-echo "   ~/beerpedia/run.sh"
-echo "   (или просто: beerpedia)"
+echo "   beerpedia"
 echo ""
 echo -e "${CYAN}🌐 В БРАУЗЕРЕ:${NC}"
 echo "   http://127.0.0.1:8000"
 echo ""
-echo -e "${CYAN}📦 ГДЕ ВЗЯТЬ ДАННЫЕ (база+картинки, ~500 МБ):${NC}"
-echo "   beer_database.db        → ~/beerpedia/"
-echo "   static/images/ (папка)  → ~/beerpedia/static/images/"
-echo "   static/breweries/       → ~/beerpedia/static/breweries/"
+echo -e "${CYAN}📦 УПРАВЛЕНИЕ ДАННЫМИ:${NC}"
+echo "   bash fetch_data.sh        # скачать полные данные (~250 МБ)"
+echo "   bash create_demo_db.sh    # демо-база (5 позиций)"
 echo ""
-echo -e "${YELLOW}💡 Совет: для передачи 500 МБ с ПК используйте:$
-        # На ПК: python -m http.server 8000
-        # На телефоне: зайдите по IP ПК и скачайте${NC}"
+echo -e "${CYAN}🔄 ОБНОВЛЕНИЕ КОДА:${NC}"
+echo "   cd ~/beerpedia && git pull"
+

@@ -40,13 +40,8 @@ rm -f beerpedia_data.zip
 
 echo -e "${YELLOW}📦 Упаковываю (это займёт ~1-2 минуты)...${NC}"
 
-# Упаковываем только данные (без кода, venv, логов)
-zip -r beerpedia_data.zip \
-    beer_database.db \
-    static/images/ \
-    static/breweries/ \
-    -x "*.log" "*.tmp" \
-    >/dev/null
+# Упаковываем через Python (работает везде, не требует системного zip)
+python pack_data.py
 
 FINAL_SIZE=$(du -h beerpedia_data.zip | cut -f1)
 echo ""
