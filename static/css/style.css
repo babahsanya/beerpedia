@@ -366,6 +366,51 @@ a:hover { text-decoration: underline; }
 .panel p { margin: 0; line-height: 1.6; }
 
 .actions-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+/* Дропдаун «В подборку» на карточке товара */
+.list-add-wrap { position: relative; display: inline-block; }
+.list-add-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 6px;
+  min-width: 220px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px;
+  z-index: 50;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+}
+.la-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  font-size: 13px;
+  color: var(--text);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.la-item:hover { background: var(--panel-2); }
+.la-item input { width: 14px; height: 14px; }
+.la-n { font-size: 11px; color: var(--muted); background: var(--chip); padding: 1px 6px; border-radius: 999px; margin-left: auto; }
+.la-empty { padding: 10px 8px; font-size: 12px; color: var(--muted); text-align: center; }
+.la-create {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 6px;
+  padding: 7px;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--accent);
+  font-size: 12px;
+  cursor: pointer;
+}
+.la-create:hover { border-color: var(--accent); }
 .btn {
   padding: 9px 14px;
   border-radius: 10px;
@@ -959,6 +1004,45 @@ a:hover { text-decoration: underline; }
   border-radius: 999px;
 }
 .ft-more { color: var(--accent); font-style: italic; }
+
+/* ===== ПОДБОРКИ (сетка карточек на /top) ===== */
+.collections-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+.collection-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  text-decoration: none;
+  color: var(--text);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.collection-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--accent);
+  text-decoration: none;
+}
+.cc-icon {
+  font-size: 34px;
+  width: 54px; height: 54px;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--panel-2);
+  border-radius: 12px;
+}
+.cc-body { flex: 1; min-width: 0; }
+.cc-title { font-size: 16px; font-weight: 600; }
+.cc-desc { font-size: 12.5px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+.cc-count { font-size: 12px; color: var(--accent); margin-top: 6px; }
+.cc-arrow { color: var(--muted); font-size: 18px; flex-shrink: 0; }
+.collection-card:hover .cc-arrow { color: var(--accent); }
 
 /* ===== FAMILY HERO (страница семьи) ===== */
 .family-hero {

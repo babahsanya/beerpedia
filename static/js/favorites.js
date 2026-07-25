@@ -225,6 +225,89 @@
     });
   }
 
+  // ===================== Работа со списками (подборками) =====================
+  function isInList(name, id) {
+    var lists = getLists();
+    return (lists[name] || []).indexOf(id) !== -1;
+  }
+  function addToList(name, id) {
+    var lists = getLists();
+    if (!lists[name]) lists[name] = [];
+    if (lists[name].indexOf(id) === -1) lists[name].push(id);
+    setLists(lists);
+  }
+  function removeFromList(name, id) {
+    var lists = getLists();
+    if (!lists[name]) return;
+    lists[name] = lists[name].filter(function (x) { return x !== id; });
+    if (lists[name].length === 0) delete lists[name];
+    setLists(lists);
+  }
+
+  // ===================== Дропдаун «В подборку» на карточке товара =====================
+  function renderListAddDropdown() {
+    var dropdown = document.getElementById("listAddDropdown");
+    if (!dropdown) return;
+    var btn = document.querySelector(".list-add-btn");
+    var beerId = btn ? parseInt(btn.dataset.beerId, 10) : NaN;
+    var lists = getLists();
+    var names = Object.keys(lists);
+
+    var html = "";
+    if (names.length > 0) {
+      html += names.map(function (name) {
+        var inList = isInList(name, beerId);
+        return '<label class="la-item">' +
+          '<input type="checkbox" data-list="' + escapeHtml(name) + '" ' + (inList ? "checked" : "") + "> " +
+          escapeHtml(name) + ' <span class="la-n">' + lists[name].length + "</span></label>";
+      }).join("");
+    } else {
+      html += '<div class="la-empty">Нет подборок</div>';
+    }
+    html += '<button type="button" class="la-create" id="laCreateBtn">+ Создать подборку</button>';
+    dropdown.innerHTML = html;
+
+    // обработчики чекбоксов
+    dropdown.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
+      cb.addEventListener("change", function () {
+        var name = cb.dataset.list;
+        if (cb.checked) addToList(name, beerId);
+        else removeFromList(name, beerId);
+      });
+    });
+    // создать новую
+    var createBtn = dropdown.querySelector("#laCreateBtn");
+    if (createBtn) {
+      createBtn.addEventListener("click", function () {
+        var name = prompt("Название подборки:");
+        if (!name) return;
+        var lists2 = getLists();
+        if (lists2[name]) { alert("Подборка уже существует"); return; }
+        lists2[name] = [];
+        setLists(lists2);
+        addToList(name, beerId);
+        renderListAddDropdown();
+      });
+    }
+  }
+
+  function initListAddButton() {
+    var btn = document.querySelector(".list-add-btn");
+    var dropdown = document.getElementById("listAddDropdown");
+    if (!btn || !dropdown) return;
+    btn.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      renderListAddDropdown();
+      dropdown.hidden = !dropdown.hidden;
+    });
+    document.addEventListener("click", function (e) {
+      if (!btn.contains(e.target) && !dropdown.contains(e.target)) {
+        dropdown.hidden = true;
+      }
+    });
+  }
+
   // ===================== Глобальный API для карточек =====================
   // экспортируем для использования из других скриптов (beer_detail)
   window.beerFavorites = {
@@ -233,6 +316,9 @@
     setLists: setLists,
     isFavorite: isFavorite,
     toggleFavorite: toggleFavorite,
+    addToList: addToList,
+    removeFromList: removeFromList,
+    isInList: isInList,
   };
 
   // ===================== Инициализация =====================
@@ -241,6 +327,7 @@
     initFavoriteButtons();
     initTabs();
     initCreateListButton();
+    initListAddButton();
     // если на странице избранного — рендерим
     if (document.getElementById("favGrid")) {
       renderFavoritesPage();

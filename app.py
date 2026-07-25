@@ -22,8 +22,10 @@
 from __future__ import annotations
 
 import json
+import os
 import random
 import re
+import secrets
 import sqlite3
 import unicodedata
 from collections import namedtuple
@@ -56,6 +58,79 @@ MAX_SUGGEST = 10
 
 app = Flask(__name__)
 app.config["JSON_AS_ASCII"] = False
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", secrets.token_hex(32))
+# Куки сессии — безопасные
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+# Отключаем debug в production (явно)
+app.config["DEBUG"] = os.environ.get("FLASK_DEBUG", "0") == "1"
+app.config["PROPAGATE_EXCEPTIONS"] = False
+app.config["TESTING"] = False
+
+
+# =============================================================================
+# SECURITY HEADERS + RATE LIMITING
+# =============================================================================
+import time as _time
+
+# Простой in-memory rate limiter для API эндпоинтов (защита от brute-force/DDoS).
+# Для production с multiple workers лучше использовать Redis, но для нашего
+# масштаба (один сервер, 4 gunicorn workers) — достаточно in-memory с tolerances.
+_api_rate_limits: dict[str, list[float]] = {}
+_RATE_WINDOW = 60  # окно в секундах
+_RATE_MAX_API = 60  # максимум запросов к API в минуту с одного IP
+
+
+def _rate_limit_check(ip: str, max_requests: int = _RATE_MAX_API) -> bool:
+    """Возвращает True если запрос разрешён, False если лимит превышен."""
+    now = _time.time()
+    if ip not in _api_rate_limits:
+        _api_rate_limits[ip] = [now]
+        return True
+    # чистим старые записи (старше окна)
+    _api_rate_limits[ip] = [t for t in _api_rate_limits[ip] if now - t < _RATE_WINDOW]
+    if len(_api_rate_limits[ip]) >= max_requests:
+        return False
+    _api_rate_limits[ip].append(now)
+    return True
+
+
+@app.before_request
+def _rate_limit_and_security():
+    """Security middleware: rate limiting на API + проверки."""
+    # Rate limit только для /api/* эндпоинтов
+    if request.path.startswith("/api/"):
+        ip = request.headers.get("X-Real-IP") or request.headers.get("X-Forwarded-For", "").split(",")[0].strip() or request.remote_addr
+        if not _rate_limit_check(ip):
+            return jsonify({"error": "Rate limit exceeded. Max 60 requests/min."}), 429
+    # Блокируем прямой доступ к .git, .env, Dockerfile,敏感 файлам
+    blocked = ("/git", "/.env", "/docker-compose", "/Dockerfile", "/entrypoint",
+               "/.dockerignore", "/__pycache__", "/.history")
+    if any(request.path.startswith(b) or b in request.path for b in blocked):
+        abort(404)
+
+
+@app.after_request
+def _add_security_headers(response):
+    """Security headers на каждый ответ."""
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    # CSP: разрешаем только свои ресурсы (no inline scripts/styles кроме нашего)
+    # Используем 'unsafe-inline' для styles т.к. у нас есть inline <style> в base.html.
+    # Для production лучше вынести в отдельные файлы.
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "img-src 'self' data: https:; "
+        "style-src 'self' 'unsafe-inline'; "
+        "script-src 'self'; "
+        "font-src 'self'; "
+        "connect-src 'self'; "
+        "frame-ancestors 'self'"
+    )
+    return response
 
 
 # =============================================================================
@@ -1163,32 +1238,75 @@ def random_beer():
 
 @app.route("/top")
 def top():
+    """Готовые автоматические подборки — каждая ведёт в каталог с предустановленным фильтром."""
     db = get_db()
-    strongest = db.execute(
-        "SELECT id, name, producer, abv, local_image FROM products_full "
-        "WHERE abv IS NOT NULL ORDER BY abv DESC LIMIT 12"
-    ).fetchall()
-    lightest = db.execute(
-        "SELECT id, name, producer, abv, local_image FROM products_full "
-        "WHERE abv IS NOT NULL AND abv > 0.5 ORDER BY abv ASC LIMIT 12"
-    ).fetchall()
-    newest = db.execute(
-        "SELECT id, name, producer, style, local_image FROM products_full "
-        "WHERE parse_date IS NOT NULL ORDER BY parse_date DESC LIMIT 12"
-    ).fetchall()
-    # Самое дешёвое — нужно распарсить цену в SQL
-    cheapest = db.execute(
-        "SELECT id, name, producer, price, abv, local_image FROM products_full "
-        "WHERE price LIKE '%₽' "
-        "ORDER BY CAST(REPLACE(REPLACE(REPLACE(price, ' ₽', ''), ' ', ''), CHAR(160), '') AS REAL) ASC LIMIT 12"
-    ).fetchall()
-    return render_template(
-        "top.html",
-        strongest=strongest,
-        lightest=lightest,
-        newest=newest,
-        cheapest=cheapest,
-    )
+
+    def count_where(where, params=()):
+        return db.execute(
+            f"SELECT COUNT(*) AS c FROM products_full WHERE {where}", params
+        ).fetchone()["c"]
+
+    collections = [
+        {
+            "icon": "💪", "title": "Крепкие",
+            "desc": "Мощные сорта с высоким алкоголем",
+            "count": count_where("abv >= 8"),
+            "url": url_for("catalog", **{"abv_min": "8"}),
+        },
+        {
+            "icon": "🪶", "title": "Лёгкие летние",
+            "desc": "Освежающие сорта до 5%",
+            "count": count_where("abv > 0.5 AND abv <= 5"),
+            "url": url_for("catalog", **{"abv_min": "0.5", "abv_max": "5"}),
+        },
+        {
+            "icon": "💰", "title": "Бюджетные",
+            "desc": "До 400 ₽ за бутылку",
+            "count": count_where(
+                "price LIKE '%₽' AND CAST(REPLACE(REPLACE(REPLACE(price, ' ₽', ''), ' ', ''), CHAR(160), '') AS REAL) <= 400"
+            ),
+            "url": url_for("catalog", **{"price_max": "400"}),
+        },
+        {
+            "icon": "💎", "title": "Премиум",
+            "desc": "От 1000 ₽ — для особых случаев",
+            "count": count_where(
+                "price LIKE '%₽' AND CAST(REPLACE(REPLACE(REPLACE(price, ' ₽', ''), ' ', ''), CHAR(160), '') AS REAL) >= 1000"
+            ),
+            "url": url_for("catalog", **{"price_min": "1000"}),
+        },
+        {
+            "icon": "📷", "title": "С фото",
+            "desc": "Позиции с изображениями этикеток",
+            "count": count_where("local_image IS NOT NULL AND local_image != ''"),
+            "url": url_for("catalog", **{"with_photo": "1"}),
+        },
+        {
+            "icon": "🍻", "title": "IPA",
+            "desc": "Все India Pale Ale в одном месте",
+            "count": count_where("style_family = 'ipa'"),
+            "url": url_for("catalog", **{"family": "ipa"}),
+        },
+        {
+            "icon": "🍒", "title": "Кислые и фруктовые",
+            "desc": "Sour, lambic, фруктовые эли",
+            "count": count_where("style_family IN ('sour','lambic')"),
+            "url": url_for("catalog", **{"family": "sour,lambic"}),
+        },
+        {
+            "icon": "🌑", "title": "Тёмные",
+            "desc": "Стауты, портеры, тёмные эли",
+            "count": count_where("style_family = 'stout-porter'"),
+            "url": url_for("catalog", **{"family": "stout-porter"}),
+        },
+        {
+            "icon": "🍯", "title": "Мёд и сидр",
+            "desc": "Медовуха и сидры — не только пиво",
+            "count": count_where("style_family IN ('mead','cider')"),
+            "url": url_for("catalog", **{"family": "mead,cider"}),
+        },
+    ]
+    return render_template("top.html", collections=collections)
 
 
 @app.route("/status")
@@ -1465,4 +1583,8 @@ def render_template_string_404(content_html: str):
 
 if __name__ == "__main__":
     print("🍺 Пивная энциклопедия запускается на http://127.0.0.1:8000")
-    app.run(host="127.0.0.1", port=8000, debug=True)
+    app.run(
+        host=os.environ.get("HOST", "127.0.0.1"),
+        port=int(os.environ.get("PORT", 8000)),
+        debug=os.environ.get("FLASK_DEBUG", "0") == "1",
+    )

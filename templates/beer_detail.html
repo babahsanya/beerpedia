@@ -109,6 +109,10 @@
         <a class="btn btn-primary" href="{{ beer.original_url }}" target="_blank" rel="noopener">Открыть оригинал ↗</a>
       {% endif %}
       <button class="btn fav-btn" data-beer-id="{{ beer.id }}" title="В избранное">♡ <span class="fav-label">В избранное</span></button>
+      <div class="list-add-wrap">
+        <button class="btn list-add-btn" type="button" data-beer-id="{{ beer.id }}" title="В подборку">📁 <span>В подборку</span></button>
+        <div class="list-add-dropdown" id="listAddDropdown" hidden></div>
+      </div>
       <a class="btn" href="{{ url_for('compare', id1=beer.id) }}">⚖ Сравнить с...</a>
       <a class="btn" href="{{ url_for('random_beer') }}">🎲 Случайное</a>
     </div>
