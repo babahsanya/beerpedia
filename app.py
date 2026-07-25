@@ -1338,22 +1338,39 @@ def status():
 @app.route("/compare")
 def compare():
     db = get_db()
-    id1 = request.args.get("id1", type=int)
-    id2 = request.args.get("id2", type=int)
+    # До 3 позиций для сравнения (id1/id2/id3). Порядок задаётся перетаскиванием.
+    ids_raw = []
+    for key in ("id1", "id2", "id3"):
+        v = request.args.get(key, type=int)
+        if v:
+            ids_raw.append(v)
+    # дедупликация: одна и та же позиция не может сравниваться с собой
+    seen = set()
+    ids = []
+    for v in ids_raw:
+        if v not in seen:
+            seen.add(v)
+            ids.append(v)
 
-    beer1 = None
-    beer2 = None
-    if id1:
-        beer1 = db.execute("SELECT * FROM products_full WHERE id = ?", (id1,)).fetchone()
-    if id2:
-        beer2 = db.execute("SELECT * FROM products_full WHERE id = ?", (id2,)).fetchone()
+    beers = []
+    for bid in ids:
+        row = db.execute("SELECT * FROM products_full WHERE id = ?", (bid,)).fetchone()
+        if row:
+            beers.append(row)
 
-    # Список для выбора второй позиции
+    # Список для выбора позиций (сортировка по имени)
     all_beers = db.execute(
-        "SELECT id, name, producer FROM products_full ORDER BY name LIMIT 500"
+        "SELECT id, name, producer FROM products_full ORDER BY name COLLATE NOCASE LIMIT 1000"
     ).fetchall()
 
-    return render_template("compare.html", beer1=beer1, beer2=beer2, all_beers=all_beers)
+    # сохраняем исходный порядок выбранных id для UI (для пустых слотов)
+    selected_ids = [b["id"] for b in beers]
+    return render_template(
+        "compare.html",
+        beers=beers,
+        selected_ids=selected_ids,
+        all_beers=all_beers,
+    )
 
 
 # =============================================================================

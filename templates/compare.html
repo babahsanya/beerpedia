@@ -3,22 +3,28 @@
 
 {% block content %}
 <h1 class="page-title">⚖ Сравнение</h1>
+<div class="page-subtitle">До 3 позиций одновременно · перетащите карточку, чтобы изменить порядок</div>
 
-<form class="filters-bar" method="get">
-  <input type="hidden" name="id1" value="{{ beer1.id if beer1 else '' }}">
-  <label style="color: var(--muted); font-size: 12px;">Позиция 2:</label>
-  <select name="id2" onchange="this.form.submit()">
-    <option value="">— выберите —</option>
-    {% for b in all_beers %}
-      <option value="{{ b.id }}" {{ 'selected' if beer2 and beer2.id == b.id }}>{{ b.name }} ({{ b.producer or '' }})</option>
-    {% endfor %}
-  </select>
+{# Селекторы позиций — каждый слот независимый #}
+<form class="compare-selectors" method="get" id="compareForm">
+  {% for i in range(3) %}
+  <div class="cmp-slot">
+    <label class="cmp-slot-label">Позиция {{ i + 1 }}</label>
+    <select name="id{{ i + 1 }}" class="cmp-select" onchange="document.getElementById('compareForm').submit()">
+      <option value="">— выберите —</option>
+      {% for b in all_beers %}
+        <option value="{{ b.id }}" {{ 'selected' if beers[i] and beers[i].id == b.id }}>{{ b.name }} ({{ b.producer or '' }})</option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endfor %}
 </form>
 
-{% if beer1 and beer2 %}
-<div class="compare-grid">
-  {% for b in [beer1, beer2] %}
-  <div class="compare-col">
+{% if beers|length >= 2 %}
+<div class="compare-grid" id="compareGrid">
+  {% for b in beers %}
+  <div class="compare-col" draggable="true" data-id="{{ b.id }}">
+    <div class="cmp-col-handle" title="Перетащите для изменения порядка">⠿</div>
     <div class="top-img">
       {% if b.local_image %}
         <img src="{{ url_for('static', filename=b.local_image.replace('static/', '')) }}" alt="{{ b.name }}">
@@ -32,29 +38,85 @@
   {% endfor %}
 </div>
 
-<table class="compare-table">
+<table class="compare-table" id="compareTable">
   <tbody>
-    <tr><th>Стиль</th><td>{{ beer1.style or '—' }}</td><td>{{ beer2.style or '—' }}</td></tr>
-    <tr><th>Подстиль</th><td>{{ beer1.substyle or '—' }}</td><td>{{ beer2.substyle or '—' }}</td></tr>
-    <tr><th>ABV</th><td>{{ (beer1.abv ~ '%') if beer1.abv else '—' }}</td><td>{{ (beer2.abv ~ '%') if beer2.abv else '—' }}</td></tr>
-    <tr><th>IBU</th><td>{{ beer1.ibu or '—' }}</td><td>{{ beer2.ibu or '—' }}</td></tr>
-    <tr><th>Объём</th><td>{{ (beer1.volume ~ ' мл') if beer1.volume else '—' }}</td><td>{{ (beer2.volume ~ ' мл') if beer2.volume else '—' }}</td></tr>
-    <tr><th>Цвет</th><td>{{ beer1.color or '—' }}</td><td>{{ beer2.color or '—' }}</td></tr>
-    <tr><th>Цена</th><td>{{ beer1.price or '—' }}</td><td>{{ beer2.price or '—' }}</td></tr>
-    <tr><th>Крепость/литр</th><td>{{ abv_per_rub(beer1) }}</td><td>{{ abv_per_rub(beer2) }}</td></tr>
-    <tr><th>Цена/100 мл</th><td>{{ price_per_100ml(beer1) }}</td><td>{{ price_per_100ml(beer2) }}</td></tr>
-    <tr><th>Наличие</th><td>{{ beer1.availability or '—' }}</td><td>{{ beer2.availability or '—' }}</td></tr>
-    <tr><th>Страна</th><td>{{ beer1.brewery_country or '—' }}</td><td>{{ beer2.brewery_country or '—' }}</td></tr>
-    <tr><th>Город</th><td>{{ beer1.brewery_city or '—' }}</td><td>{{ beer2.brewery_city or '—' }}</td></tr>
-    <tr><th>Аромат</th><td>{{ beer1.aroma or '—' }}</td><td>{{ beer2.aroma or '—' }}</td></tr>
-    <tr><th>Вкус</th><td>{{ beer1.taste or '—' }}</td><td>{{ beer2.taste or '—' }}</td></tr>
-    <tr><th>Описание</th><td>{{ (beer1.description[:120] ~ '...') if beer1.description and beer1.description|length > 120 else (beer1.description or '—') }}</td><td>{{ (beer2.description[:120] ~ '...') if beer2.description and beer2.description|length > 120 else (beer2.description or '—') }}</td></tr>
+    <tr><th>Стиль</th>{% for b in beers %}<td>{{ b.style or '—' }}</td>{% endfor %}</tr>
+    <tr><th>Подстиль</th>{% for b in beers %}<td>{{ b.substyle or '—' }}</td>{% endfor %}</tr>
+    <tr><th>ABV</th>{% for b in beers %}<td>{{ (b.abv ~ '%') if b.abv else '—' }}</td>{% endfor %}</tr>
+    <tr><th>IBU</th>{% for b in beers %}<td>{{ b.ibu or '—' }}</td>{% endfor %}</tr>
+    <tr><th>Объём</th>{% for b in beers %}<td>{{ (b.volume ~ ' мл') if b.volume else '—' }}</td>{% endfor %}</tr>
+    <tr><th>Цвет</th>{% for b in beers %}<td>{{ b.color or '—' }}</td>{% endfor %}</tr>
+    <tr><th>Цена</th>{% for b in beers %}<td>{{ b.price or '—' }}</td>{% endfor %}</tr>
+    <tr><th>Крепость/литр</th>{% for b in beers %}<td>{{ abv_per_rub(b) }}</td>{% endfor %}</tr>
+    <tr><th>Цена/100 мл</th>{% for b in beers %}<td>{{ price_per_100ml(b) }}</td>{% endfor %}</tr>
+    <tr><th>Наличие</th>{% for b in beers %}<td>{{ b.availability or '—' }}</td>{% endfor %}</tr>
+    <tr><th>Страна</th>{% for b in beers %}<td>{{ b.brewery_country or '—' }}</td>{% endfor %}</tr>
+    <tr><th>Город</th>{% for b in beers %}<td>{{ b.brewery_city or '—' }}</td>{% endfor %}</tr>
+    <tr><th>Аромат</th>{% for b in beers %}<td>{{ b.aroma or '—' }}</td>{% endfor %}</tr>
+    <tr><th>Вкус</th>{% for b in beers %}<td>{{ b.taste or '—' }}</td>{% endfor %}</tr>
+    <tr><th>Описание</th>{% for b in beers %}<td>{{ (b.description[:120] ~ '...') if b.description and b.description|length > 120 else (b.description or '—') }}</td>{% endfor %}</tr>
   </tbody>
 </table>
 {% else %}
   <div class="empty-state">
     <div class="big">⚖</div>
-    <p>Выберите вторую позицию для сравнения с первой.</p>
+    <p>Выберите минимум две позиции для сравнения.</p>
+    <p style="margin-top:8px; font-size:13px;" class="text-muted">Можно сравнить до трёх сортов одновременно.</p>
   </div>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Перетаскивание порядка сравниваемых позиций (HTML5 drag-and-drop).
+// Меняем порядок колонок и ячеек таблицы, затем перезагружаемся с новым порядком id.
+(function () {
+  var grid = document.getElementById('compareGrid');
+  if (!grid) return;
+  var cols = Array.prototype.slice.call(grid.querySelectorAll('.compare-col'));
+  if (cols.length < 2) return;
+
+  var dragSrc = null;
+
+  cols.forEach(function (col) {
+    col.addEventListener('dragstart', function (e) {
+      dragSrc = col;
+      col.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      try { e.dataTransfer.setData('text/plain', col.dataset.id); } catch (err) {}
+    });
+    col.addEventListener('dragend', function () {
+      col.classList.remove('dragging');
+      grid.querySelectorAll('.compare-col').forEach(function (c) { c.classList.remove('drag-over'); });
+    });
+    col.addEventListener('dragover', function (e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (dragSrc && dragSrc !== col) col.classList.add('drag-over');
+    });
+    col.addEventListener('dragleave', function () {
+      col.classList.remove('drag-over');
+    });
+    col.addEventListener('drop', function (e) {
+      e.preventDefault();
+      if (!dragSrc || dragSrc === col) return;
+      // переставляем колонку в DOM
+      var colsNow = Array.prototype.slice.call(grid.querySelectorAll('.compare-col'));
+      var fromIdx = colsNow.indexOf(dragSrc);
+      var toIdx = colsNow.indexOf(col);
+      if (fromIdx < toIdx) {
+        grid.insertBefore(dragSrc, col.nextSibling);
+      } else {
+        grid.insertBefore(dragSrc, col);
+      }
+      // собираем новый порядок id и перезагружаем страницу
+      var newOrder = Array.prototype.slice.call(grid.querySelectorAll('.compare-col'))
+        .map(function (c) { return c.dataset.id; });
+      var params = new URLSearchParams();
+      newOrder.forEach(function (id, i) { params.set('id' + (i + 1), id); });
+      window.location.search = params.toString();
+    });
+  });
+})();
+</script>
 {% endblock %}
