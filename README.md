@@ -1,242 +1,211 @@
-# 🍺 Пивная энциклопедия
+# Beerpedia - Private Beer Encyclopedia
 
-Веб-энциклопедия крафтового пива, сидра и медовухи. ~7733 позиций, 842 стиля в 16 семьях, 278 пивоварен, 19 стран. Данные парсятся с [craftbeer78.ru](https://craftbeer78.ru), стиль — Flask + SQLite, тёмная/светлая тема.
+Flask + SQLite + Docker deployment with auto-parsing, Basic Auth and Nginx reverse proxy.
 
-## 📦 Состав проекта
-
-| Файл | Назначение |
-|---|---|
-| `app.py` | **Главный Flask-сервер** (энциклопедия) → http://127.0.0.1:8000 |
-| `craftbeer_global_parser.py` | Парсер craftbeer78.ru, наполняет базу |
-| `image_cache.py` | Скачивает фото бутылок в `static/images/` |
-| `fetch_brewery_logos.py` | Скачивает логотипы пивоварен в `static/breweries/` |
-| `fetch_tastes.py` | Обходит каталог вкусов /beer-tastes (132 тега) |
-| `style_guide.py` | Справочник стилей BJCP (31 стиль) в таблицу `beer_styles` |
-| `style_families.py` | Классификатор 16 семей стилей |
-| `canonicalize_styles.py` | Канонизация 842 стилей → 48 категорий |
-| `normalize_styles.py` | Заполняет style_family по keyword-правилам |
-| `search_engine.py` | Интеллектуальный поиск (опечатки, раскладка, ru↔en) |
-| `run_full_pipeline.py` | Конвейер: парсер → картинки → стили (одной командой) |
-| `db_viewer.py` | Админ-просмотрщик таблиц (старый, не трогали) |
-| `beer_database.db` | SQLite — основная база |
-| `templates/` | HTML-шаблоны (Jinja2) |
-| `static/` | CSS, JS, кеш картинок |
-| `requirements.txt` | Зависимости |
-
-## 🚀 Быстрый старт
+## Quick Start (VPS)
 
 ```bash
-# 1. Установить зависимости (Python 3.10+)
-pip install -r requirements.txt
+# 1. Clone
+ git clone https://github.com/babahsanya/beerpedia.git
+ cd beerpedia
 
-# 2. Запустить веб-энциклопедию (данные уже в базе)
-python app.py
-# → http://127.0.0.1:8000
+# 2. Configure
+ cp .env.example .env
+ nano .env   # set SECRET_KEY (random hex)
+
+# 3. Change default password
+ python -c "from passlib.apache import HtpasswdFile; ht = HtpasswdFile('.htpasswd', new=True); ht.set_password('beerpedia', 'YOUR_NEW_PASSWORD'); ht.save()"
+
+# 4. Load data (download release or copy local DB)
+ # Option A: from GitHub Release (data-v1)
+ wget -O /tmp/data.zip https://github.com/babahsanya/beerpedia/releases/download/data-v1/beerpedia_data.zip
+ unzip /tmp/data.zip -d /tmp/beerpedia_data
+
+ # Option B: copy local files
+ # scp beer_database.db user@vps:/path/to/beerpedia/
+ # scp -r static/images user@vps:/path/to/beerpedia/static/
+
+ docker compose up -d       # creates volumes
+ docker compose down         # stop
+
+ # Copy DB into volume
+ docker run --rm    -v $(pwd)/beer_database.db:/source    -v beerpedia_beer_data:/dest    alpine cp /source /dest/beer_database.db
+
+ # Copy images into volume
+ docker run --rm    -v /tmp/beerpedia_data/static/images:/source    -v beerpedia_beer_static_images:/dest    alpine sh -c "cp -r /source/* /dest/ 2>/dev/null || true"
+
+ # Copy brewery logos
+ docker run --rm    -v /tmp/beerpedia_data/static/breweries:/source    -v beerpedia_beer_static_breweries:/dest    alpine sh -c "cp -r /source/* /dest/ 2>/dev/null || true"
+
+# 5. Start
+ docker compose up -d
+
+# 6. Verify
+ docker compose logs -f app
+ curl -u beerpedia:YOUR_NEW_PASSWORD http://localhost
 ```
 
-> 📱 **Хотите запустить на Android?** См. [README_MOBILE.md](README_MOBILE.md) — полный автоустановщик через Termux (одна команда).
-
-## 🔄 Обновление данных (полный прогон)
-
-Одна команда — парсер + картинки + справочник стилей:
-
-```bash
-python run_full_pipeline.py
-```
-
-Полный прогон занимает ~50–60 минут (парсер) + ~10 минут (картинки). **Можно прервать Ctrl+C и запустить снова** — продолжит с места остановки (resume через `parse_progress` таблицу).
-
-### Постепенный запуск
-
-```bash
-# Сначала тест на 200 позиций (проверить, что всё работает)
-python run_full_pipeline.py --limit 200
-
-# Если ок — полный прогон
-python run_full_pipeline.py
-
-# Только конкретный шаг
-python run_full_pipeline.py --step parse    # парсер
-python run_full_pipeline.py --step images   # картинки
-python run_full_pipeline.py --step styles   # справочник стилей
-
-# Перепроверить только упавшие URL
-python run_full_pipeline.py --failed-only
-
-# Начать парсер с нуля (игнорировать прогресс)
-python run_full_pipeline.py --fresh
-```
-
-### Отдельные команды
-
-```bash
-# Парсер
-python craftbeer_global_parser.py --refresh              # с resume
-python craftbeer_global_parser.py --refresh --fresh      # с нуля
-python craftbeer_global_parser.py --refresh --limit 100  # тест
-python craftbeer_global_parser.py --refresh --failed-only
-
-# Кеш картинок (1 главное + до 4 галерейных на позицию)
-python image_cache.py --limit 500     # пробная партия
-python image_cache.py                 # всё (~38 000 файлов)
-python image_cache.py --max-per-beer 3
-
-# Справочник стилей
-python style_guide.py
-python style_guide.py --stats         # сводка по стилям
-```
-
-## 🗂 База данных
-
-**Таблица `products_full`** (7733 строк, 44 колонки):
-- Идентификация: `name`, `producer`, `category` (пиво/сидр/медовуха), `style`, `substyle`
-- География: `brewery_country`, `brewery_city`, `brewery_full_name`
-- Характеристики: `abv`, `volume`, `ibu`, `og_value`, `color`
-- Органолептика: `aroma`, `taste`, `description`, `mouthfeel`, `appearance`
-- Состав: `ingredients`, `hops`, `malt`, `yeast`, `additives`
-- Коммерция: `price`, `availability`, `barcode`
-- Рейтинги: `rating`, `rating_count`, `reviews_count`
-- Гастрономия: `food_pairing`, `serving_temp`, `serving_glass`
-- Картинки: `image_url`, `additional_images`, `local_image`, `local_gallery`
-- Служебное: `original_url`, `url_hash`, `parse_date`, `parse_success`, `last_updated`
-
-**Таблица `beer_styles`** — справочник BJCP (31 стиль): описание, аромат, вкус, история, ABV/IBU/OG/FG диапазоны, бокал, температура подачи.
-
-**Таблица `parse_progress`** — checkpoint для resume парсера.
-
-## 🌐 Маршруты энциклопедии
-
-| URL | Назначение |
-|---|---|
-| `/` | Главная: статистика, топ стилей/пивоваров/стран, случайные бутылки |
-| `/search?q=` | Поиск по названию/пивовару/стилю/стране |
-| `/api/suggest?q=` | AJAX-подсказки (JSON) |
-| `/beer/<id>` | Карточка пива: фото, характеристики, описание, BJCP-блок, похожие |
-| `/styles` | Все стили |
-| `/style/<slug>` | Страница стиля: BJCP + статистика + топ пивоварен/позиций |
-| `/breweries` | Все пивовары |
-| `/brewery/<slug>` | Страница пивовара: распределение по стилям + товары |
-| `/country/<name>` | Страница страны |
-| `/catalog` | Каталог с фильтрами (название/стиль/страна/ABV) |
-| `/top` | Подборки: крепкое, лёгкое, новинки, доступное |
-| `/compare?id1=&id2=` | Сравнение двух позиций бок о бок |
-| `/random` | Случайная карточка |
-
-## ⚙️ Технические детали
-
-**Парсер** приоритезирует JSON-LD `additionalProperty` (стиль/ABV/IBU/состав — самый чистый источник), fallback — таблица свойств DOM (`product_page_properties_table_row`). Regex по `page_text` намеренно убран: он ловил мусор из описаний.
-
-**Кеш картинок** берёт только `/images_beers/` URL (отсекает логотипы/SVG/баннеры), 8 потоков, idempotent.
-
-**Resume**: прогресс парсера и скачанных картинок хранится в БД — прерывание/перезапуск безопасны.
-
-## 📊 Наполненность после полного обновления (ожидаемая)
-
-На тесте из 25 позиций:
-- `name`, `style`, `abv`, `ibu`, `description`, `ingredients`, `og_value`, `barcode`, `price`, `availability`, `image_url` — **~100%**
-- `color` — ~44% (сайт отдаёт не всегда)
-- `aroma`, `taste` — низко (сайт отдаёт редко)
-
-## 🚀 Развёртывание на VPS (Docker)
-
-### Быстрый старт
-
-```bash
-# 1. Клонируем репо на VPS
-git clone https://github.com/babahsanya/beerpedia.git
-cd beerpedia
-
-# 2. (Опционально) Настраиваем домен
-cp .env.example .env
-nano .env  # указать DOMAIN=beer.example.com
-
-# 3. Запуск! Docker сам соберёт образ и запустит
-docker compose up -d
-
-# 4. Проверяем
-curl http://localhost
-docker compose logs -f app
-```
-
-### Что произойдёт при первом запуске
-
-1. **Docker соберёт образ** (Python 3.12 + зависимости + код)
-2. **entrypoint.sh проверит БД**: если `beer_database.db` нет → запустит полный
-   конвейер (`run_full_pipeline.py --fresh`) — парсинг 7733 позиций + картинки.
-   Это займёт ~1-2 часа при первом запуске.
-3. **Gunicorn** поднимет production-сервер на порту 8000
-4. **Nginx** (отдельный контейнер) будет проксировать запросы на порту 80
-
-### Если БД уже есть (миграция с локального)
-
-Если у тебя уже есть готовая `beer_database.db` с данными — скопируй её в volume:
-
-```bash
-# После первого docker compose up -d (создаст volumes)
-docker compose down
-
-# Копируем локальную базу в volume
-docker run --rm -v $(pwd)/beer_database.db:/source -v beerpedia_beer_data:/dest \
-    alpine cp /source /dest/beer_database.db
-
-# Копируем картинки (если есть локально)
-docker run --rm -v $(pwd)/static/images:/source -v beerpedia_beer_static_images:/dest \
-    alpine sh -c "cp -r /source/* /dest/"
-
-# Запускаем снова — теперь с готовой базой
-docker compose up -d
-```
-
-### Полезные команды
-
-```bash
-# Обновить данные (парсер + картинки + стили)
-docker compose exec app python run_full_pipeline.py
-
-# Только перепроверить ошибки
-docker compose exec app python craftbeer_global_parser.py --refresh --failed-only
-
-# Посмотреть логи
-docker compose logs -f app      # Flask/Gunicorn
-docker compose logs -f nginx    # Nginx
-
-# Обновить код из git и пересобрать
-git pull && docker compose up -d --build
-
-# Остановить
-docker compose down
-
-# Полный сброс (УДАЛИТ базу и картинки!)
-docker compose down -v
-```
-
-### HTTPS (Let's Encrypt)
-
-```bash
-# Установить certbot на VPS
-sudo apt install certbot python3-certbot-nginx
-
-# Получить SSL-сертификат (домен должен указывать на IP VPS)
-sudo certbot --nginx -d beer.example.com
-
-# Автообновление сертификатов (уже настроено certbot'ом)
-sudo certbot renew --dry-run
-```
-
-### Структура Docker-деплоя
+## Architecture
 
 ```
 VPS
-├── beerpedia/               # код + Dockerfile
-│   ├── Dockerfile
-│   ├── docker-compose.yml
-│   ├── nginx.conf
-│   └── entrypoint.sh
-├── Docker volumes (персистентные):
-│   ├── beer_data/           # beer_database.db (~45 МБ)
-│   ├── beer_static_images/  # фото пива (~450 МБ)
-│   └── beer_static_breweries/ # логотипы (~3 МБ)
-└── Контейнеры:
-    ├── beer_app             # Flask + Gunicorn (порт 8000)
-    └── beer_nginx           # Nginx reverse proxy (порт 80)
+ +-- beerpedia/                  # code (git)
+ |   +-- Dockerfile              # python:3.12-slim + gunicorn
+ |   +-- docker-compose.yml      # 3 services: app, nginx, cron
+ |   +-- nginx.conf              # reverse proxy + Basic Auth
+ |   +-- .htpasswd               # login:password
+ |   +-- entrypoint.sh           # DB check + gunicorn start
+ |   +-- backup.sh               # daily SQLite backup + rotation
+ |   +-- app.py                  # Flask app (catalog, search, etc.)
+ |   +-- run_full_pipeline.py    # parser + images + styles
+ |   +-- craftbeer_global_parser.py  # data parser
+ |   +-- image_cache.py          # image downloader
+ |   +-- templates/              # Jinja2 HTML
+ |   +-- static/                 # CSS, JS
+ +-- Docker volumes (persistent):
+ |   +-- beer_data/              # beer_database.db (~45 MB)
+ |   +-- beer_static_images/     # beer photos (~450 MB)
+ |   +-- beer_static_breweries/  # brewery logos (~3 MB)
+ +-- Containers:
+     +-- beer_app     # Flask + Gunicorn (port 8000, internal)
+     +-- beer_nginx   # Nginx reverse proxy (port 80/443)
+     +-- beer_cron   # Scheduled tasks (backup + parsing)
 ```
+
+## Security
+
+- **Basic Auth** - Nginx requires login/password for all requests
+- **Security headers** - X-Frame-Options, X-Content-Type-Options, Referrer-Policy
+- **Rate limiting** - 10 req/s on API endpoints
+- **Read-only methods** - Only GET/HEAD allowed
+- **Server tokens hidden** - nginx version not exposed
+- **Unprivileged user** - app runs as user `beer` (UID 1000)
+- **No debug mode** - FLASK_DEBUG=0 in production
+
+### Default credentials
+
+Login: `beerpedia` / Password: `changeme123` - **change before deploying!**
+
+```bash
+# Generate new .htpasswd
+python -c "from passlib.apache import HtpasswdFile; ht = HtpasswdFile('.htpasswd', new=True); ht.set_password('beerpedia', 'NEW_PASSWORD'); ht.save()"
+
+# Or install apache2-utils and use htpasswd
+apt install apache2-utils
+htpasswd -cb .htpasswd beerpedia NEW_PASSWORD
+
+# Restart nginx to apply
+docker compose restart nginx
+```
+
+## Auto-Updates
+
+Data updates automatically without manual intervention:
+
+| Schedule | Task | Description |
+|----------|------|-------------|
+| Daily 03:00 | `backup.sh` | SQLite backup (7-day rotation) |
+| Sunday 04:00 | `run_full_pipeline.py --refresh` | Full parse + images + styles |
+
+Cron runs in a separate container with the same Python image as the app.
+
+### Manual update
+
+```bash
+docker compose exec app python run_full_pipeline.py
+docker compose exec app python run_full_pipeline.py --failed-only  # retry errors
+```
+
+## HTTPS (Let's Encrypt)
+
+Optional but recommended. Requires a domain pointing to your VPS IP.
+
+```bash
+# Install certbot
+sudo apt install certbot python3-certbot-nginx
+
+# Get certificate (replace beer.example.com with your domain)
+sudo certbot --nginx -d beer.example.com
+
+# Verify auto-renewal
+sudo certbot renew --dry-run
+```
+
+After HTTPS is set up, uncomment in `docker-compose.yml`:
+```yaml
+ports:
+  - "80:80"
+  - "443:443"   # <-- uncomment this
+```
+
+And in `nginx.conf` uncomment HSTS:
+```nginx
+add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+```
+
+Then restart: `docker compose up -d`
+
+## Useful Commands
+
+```bash
+# Logs
+docker compose logs -f app       # Flask/Gunicorn
+docker compose logs -f nginx     # Nginx
+docker compose logs -f cron      # Cron (backup + parse)
+
+# Update code + rebuild
+git pull && docker compose up -d --build
+
+# Stop
+docker compose down
+
+# Full reset (DELETES all data!)
+docker compose down -v
+
+# Manual backup
+docker exec beer_app /app/backup.sh
+
+# Check health
+docker compose ps
+```
+
+## Routes
+
+| URL | Description |
+|-----|-------------|
+| `/` | Home: stats, top styles/breweries, random beers |
+| `/search?q=` | Search by name/brewery/style/country |
+| `/beer/<id>` | Beer card: photo, specs, BJCP info, similar |
+| `/styles` | All beer styles |
+| `/style/<slug>` | Style page: BJCP + stats |
+| `/breweries` | All breweries |
+| `/brewery/<slug>` | Brewery page: style distribution + products |
+| `/country/<name>` | Country page |
+| `/catalog` | Catalog with filters (style/country/ABV/price) |
+| `/top` | Collections: strong, light, new, available |
+| `/compare?id1=&id2=` | Side-by-side comparison |
+| `/random` | Random beer card |
+
+## Local Development
+
+```bash
+pip install -r requirements.txt
+python app.py  # http://127.0.0.1:8000
+```
+
+## Database
+
+- **products_full** (7733 rows, 40+ columns): name, style, ABV, IBU, description, ingredients, price, ratings, etc.
+- **beer_styles** - BJCP style reference (31 style)
+- **parse_progress** - parser checkpoint for resume
+
+## Tech Stack
+
+- **Backend**: Flask + Gunicorn
+- **Database**: SQLite
+- **Frontend**: Jinja2 templates + vanilla CSS/JS
+- **Reverse Proxy**: Nginx (security headers, rate limiting, static files)
+- **Deployment**: Docker Compose (3 containers)
+- **Search**: fuzzy matching with typo correction, keyboard layout detection
+
+Styles: BJCP 2021

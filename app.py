@@ -1457,7 +1457,7 @@ def status():
     health = "idle"
     health_icon = "⚪"
     health_title = "Парсер не запущен"
-    health_sub = "Запустите: python craftbeer_global_parser.py --refresh"
+    health_sub = "Обновление данных запустится автоматически"
     last_activity_ago = None
 
     if last_seen:
@@ -1474,7 +1474,7 @@ def status():
         health = "idle"
         health_icon = "⚪"
         health_title = "Парсинг ещё не запускался"
-        health_sub = "Запустите: python craftbeer_global_parser.py --refresh"
+        health_sub = "Обновление данных запустится автоматически"
     elif remaining == 0:
         if errors == 0:
             health = "done"
@@ -1510,7 +1510,7 @@ def status():
             health_title = "Парсер похоже завис"
             health_sub = (
                 f"Нет активности {ago_min} мин. Перезапустите: "
-                f"python craftbeer_global_parser.py --refresh (продолжит с места)"
+                f"Обновление запустится автоматически"
             )
 
     return render_template(

@@ -105,9 +105,6 @@
     {% endif %}
 
     <div class="actions-row">
-      {% if beer.original_url %}
-        <a class="btn btn-primary" href="{{ beer.original_url }}" target="_blank" rel="noopener">Открыть оригинал ↗</a>
-      {% endif %}
       <button class="btn fav-btn" data-beer-id="{{ beer.id }}" title="В избранное">♡ <span class="fav-label">В избранное</span></button>
       <div class="list-add-wrap">
         <button class="btn list-add-btn" type="button" data-beer-id="{{ beer.id }}" title="В подборку">📁 <span>В подборку</span></button>

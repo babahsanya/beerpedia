@@ -512,8 +512,6 @@ CATALOG_TEMPLATE = """
                     <td>{{ product.taste or '' }}</td>
                     <td class="wrap">{{ product.description or '' }}</td>
                     <td>
-                      {% if product.original_url %}
-                        <a class="link" href="{{ product.original_url }}" target="_blank">Открыть</a>
                       {% endif %}
                     </td>
                   </tr>

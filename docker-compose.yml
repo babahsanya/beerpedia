@@ -1,14 +1,9 @@
-# docker-compose.yml — пивная энциклопедия (Flask + Nginx + Cron).
+# docker-compose.yml — Beerpedia (Flask + Nginx + Cron).
 #
 # Запуск: docker compose up -d
 # Остановка: docker compose down
 # Логи: docker compose logs -f app
-# Обновление данных: docker compose exec app python run_full_pipeline.py
-#
-# Volumes (данные сохраняются между пересборками):
-#   beer_data → beer_database.db + backups
-#   beer_static_images → static/images/ (фото пива)
-#   beer_static_breweries → static/breweries/ (логотипы)
+# Обновление: docker compose exec app python run_full_pipeline.py
 
 services:
   app:
@@ -21,10 +16,10 @@ services:
       - beer_static_breweries:/app/static/breweries
     environment:
       - PYTHONUNBUFFERED=1
-      - SECRET_KEY=${SECRET_KEY:-please_change_me_in_env}
+      - SECRET_KEY=please_change_me_in_env
       - FLASK_DEBUG=0
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/').read()"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen("http://localhost:8000/").read()"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -44,6 +39,7 @@ services:
       # - "443:443"
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./.htpasswd:/etc/nginx/.htpasswd:ro
       - beer_static_images:/app/static/images:ro
       - beer_static_breweries:/app/static/breweries:ro
     depends_on:
@@ -54,7 +50,7 @@ services:
 
   # Cron: ежедневный бэкап (3:00) + еженедельное обновление данных (вс 4:00)
   cron:
-    image: alpine:latest
+    build: .
     container_name: beer_cron
     restart: unless-stopped
     volumes:
@@ -67,7 +63,7 @@ services:
       - -c
       - |
         echo "0 3 * * * /bin/sh /app/backup.sh >> /var/log/cron.log 2>&1" > /etc/crontabs/root
-        echo "0 4 * * 0 echo 'Запуск обновления данных (ручной)'" >> /etc/crontabs/root
+        echo "0 4 * * 0 cd /app && python run_full_pipeline.py --refresh >> /var/log/cron_parse.log 2>&1" >> /etc/crontabs/root
         crond -f -l 2
     depends_on:
       app:
