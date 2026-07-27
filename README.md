@@ -84,7 +84,7 @@ VPS
 
 ### Default credentials
 
-Login: `beerpedia` / Password: `changeme123` - **change before deploying!**
+Login: `beerpedia` / Password: (set in .htpasswd) - **change default before deploying!**
 
 ```bash
 # Generate new .htpasswd

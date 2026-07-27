@@ -16,7 +16,7 @@ services:
       - beer_static_breweries:/app/static/breweries
     environment:
       - PYTHONUNBUFFERED=1
-      - SECRET_KEY=please_change_me_in_env
+      - SECRET_KEY=${SECRET_KEY:?Set SECRET_KEY in .env}
       - FLASK_DEBUG=0
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen("http://localhost:8000/").read()"]

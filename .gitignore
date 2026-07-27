@@ -52,3 +52,7 @@ desktop.ini
 
 # Список обнаруженных URL (кэш discovery, ~460 КБ — можно перегенерировать)
 discovered_urls.txt
+
+# Secrets
+.htpasswd
+.env
